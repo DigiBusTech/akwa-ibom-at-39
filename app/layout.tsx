@@ -37,6 +37,9 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Akwa Ibom @ 39",
   },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
   keywords: [
     "Akwa Ibom @ 39",
     "Akwa Ibom State Anniversary",
@@ -66,6 +69,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${outfit.variable} dark`}>
       <head>
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#007A33" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />

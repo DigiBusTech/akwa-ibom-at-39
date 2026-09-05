@@ -1,6 +1,25 @@
 import { createBrowserClient } from "@supabase/ssr";
 import type { Database } from "@/types/database";
 
+/**
+ * Check if real, valid Supabase credentials are configured in the browser environment.
+ * Prevents phantom WebSocket connection attempts to placeholder URLs.
+ */
+export function isSupabaseConfigured(): boolean {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) return false;
+  if (
+    supabaseUrl.includes("placeholder") ||
+    supabaseUrl.includes("your-project") ||
+    supabaseAnonKey.includes("placeholder")
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export function createClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -18,3 +37,4 @@ export function createClient() {
     supabaseAnonKey || "placeholder-anon-key"
   );
 }
+

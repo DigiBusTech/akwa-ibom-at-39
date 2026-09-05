@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Heart, ChevronUp, ChevronDown, CheckCircle2 } from "lucide-react";
 import type { BirthdayWish } from "@/types/database";
 import { WishAccordionForm } from "./WishAccordionForm";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { fetchBirthdayWishes } from "@/app/actions/wishes";
 
 interface BirthdayTickerProps {
@@ -34,24 +34,29 @@ export function BirthdayTicker({ initialWishes = [] }: BirthdayTickerProps) {
 
   // Real-time synchronization for newly posted wishes
   useEffect(() => {
-    const supabase = createClient();
-    const channel = supabase
-      .channel("public:birthday_wishes_ticker")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "birthday_wishes" },
-        async () => {
-          try {
-            const fresh = await fetchBirthdayWishes();
-            if (fresh && fresh.length > 0) {
-              setWishes(fresh);
+    let supabase: ReturnType<typeof createClient> | null = null;
+    let channel: ReturnType<ReturnType<typeof createClient>["channel"]> | null = null;
+
+    if (isSupabaseConfigured()) {
+      supabase = createClient();
+      channel = supabase
+        .channel("public:birthday_wishes_ticker")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "birthday_wishes" },
+          async () => {
+            try {
+              const fresh = await fetchBirthdayWishes();
+              if (fresh && fresh.length > 0) {
+                setWishes(fresh);
+              }
+            } catch {
+              // fallback gracefully
             }
-          } catch {
-            // fallback gracefully
           }
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+    }
 
     const interval = setInterval(async () => {
       try {
@@ -65,7 +70,9 @@ export function BirthdayTicker({ initialWishes = [] }: BirthdayTickerProps) {
     }, 10000);
 
     return () => {
-      supabase.removeChannel(channel);
+      if (supabase && channel) {
+        supabase.removeChannel(channel);
+      }
       clearInterval(interval);
     };
   }, []);

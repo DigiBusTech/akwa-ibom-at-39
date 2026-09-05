@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Trophy, Users, Globe, MapPin, Sparkles } from "lucide-react";
 import type { CampaignStats } from "@/app/actions/stats";
 import { fetchCampaignStats } from "@/app/actions/stats";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 
 interface LiveStatsProps {
   initialStats?: CampaignStats;
@@ -18,20 +18,25 @@ export function LiveHeroCounter({ initialStats }: LiveStatsProps) {
       fetchCampaignStats().then(setStats).catch(() => {});
     }
 
-    const supabase = createClient();
-    const channel = supabase
-      .channel("public:quiz_submissions_hero")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "quiz_submissions" },
-        async () => {
-          try {
-            const fresh = await fetchCampaignStats();
-            setStats(fresh);
-          } catch {}
-        }
-      )
-      .subscribe();
+    let supabase: ReturnType<typeof createClient> | null = null;
+    let channel: ReturnType<ReturnType<typeof createClient>["channel"]> | null = null;
+
+    if (isSupabaseConfigured()) {
+      supabase = createClient();
+      channel = supabase
+        .channel("public:quiz_submissions_hero")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "quiz_submissions" },
+          async () => {
+            try {
+              const fresh = await fetchCampaignStats();
+              setStats(fresh);
+            } catch {}
+          }
+        )
+        .subscribe();
+    }
 
     const interval = setInterval(async () => {
       try {
@@ -41,7 +46,9 @@ export function LiveHeroCounter({ initialStats }: LiveStatsProps) {
     }, 10000);
 
     return () => {
-      supabase.removeChannel(channel);
+      if (supabase && channel) {
+        supabase.removeChannel(channel);
+      }
       clearInterval(interval);
     };
   }, []);
@@ -71,20 +78,25 @@ export function TopRegionsLeaderboard({ initialStats }: LiveStatsProps) {
       fetchCampaignStats().then(setStats).catch(() => {});
     }
 
-    const supabase = createClient();
-    const channel = supabase
-      .channel("public:quiz_submissions_regions")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "quiz_submissions" },
-        async () => {
-          try {
-            const fresh = await fetchCampaignStats();
-            setStats(fresh);
-          } catch {}
-        }
-      )
-      .subscribe();
+    let supabase: ReturnType<typeof createClient> | null = null;
+    let channel: ReturnType<ReturnType<typeof createClient>["channel"]> | null = null;
+
+    if (isSupabaseConfigured()) {
+      supabase = createClient();
+      channel = supabase
+        .channel("public:quiz_submissions_regions")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "quiz_submissions" },
+          async () => {
+            try {
+              const fresh = await fetchCampaignStats();
+              setStats(fresh);
+            } catch {}
+          }
+        )
+        .subscribe();
+    }
 
     const interval = setInterval(async () => {
       try {
@@ -94,7 +106,9 @@ export function TopRegionsLeaderboard({ initialStats }: LiveStatsProps) {
     }, 10000);
 
     return () => {
-      supabase.removeChannel(channel);
+      if (supabase && channel) {
+        supabase.removeChannel(channel);
+      }
       clearInterval(interval);
     };
   }, []);

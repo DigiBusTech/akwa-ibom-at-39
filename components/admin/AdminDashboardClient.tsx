@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import type { AdminAnalyticsData } from "@/app/actions/admin";
 import { fetchAdminDashboardData } from "@/app/actions/admin";
-import { createClient } from "@/lib/supabase/client";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { AdminCharts } from "./AdminCharts";
 import { WishesTable } from "./WishesTable";
 import { AkwaIbomMap } from "../AkwaIbomMap";
@@ -26,9 +26,54 @@ interface AdminDashboardClientProps {
 }
 
 export function AdminDashboardClient({ initialData }: AdminDashboardClientProps) {
+  // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [authError, setAuthError] = useState("");
+
+  // Live Data & Telemetry State - Always declared unconditionally at top level (React Rules of Hooks)
+  const [data, setData] = useState<AdminAnalyticsData>(initialData);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date>(new Date());
+
+  const refreshLiveStats = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      const fresh = await fetchAdminDashboardData();
+      setData(fresh);
+      setLastSyncedAt(new Date());
+    } catch (e) {
+      console.warn("Failed to refresh live admin stats:", e);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, []);
+
+  // Supabase Realtime channel subscription + Polling fallback
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let supabase: ReturnType<typeof createClient> | null = null;
+    let channel: ReturnType<ReturnType<typeof createClient>["channel"]> | null = null;
+
+    if (isSupabaseConfigured()) {
+      supabase = createClient();
+      channel = supabase
+        .channel("admin:realtime_dashboard")
+        .on("postgres_changes", { event: "*", schema: "public", table: "quiz_submissions" }, () => refreshLiveStats())
+        .on("postgres_changes", { event: "*", schema: "public", table: "birthday_wishes" }, () => refreshLiveStats())
+        .subscribe();
+    }
+
+    const interval = setInterval(() => refreshLiveStats(), 8000);
+
+    return () => {
+      if (supabase && channel) {
+        supabase.removeChannel(channel);
+      }
+      clearInterval(interval);
+    };
+  }, [isAuthenticated, refreshLiveStats]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +117,6 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
                   setAuthError("");
                 }}
                 className="w-full px-4 py-3 rounded-xl bg-slate-950/80 border border-slate-800 text-white font-medium focus:outline-none focus:border-orange-500 transition text-sm"
-                autoFocus
               />
               {authError && (
                 <p className="text-xs text-rose-400 flex items-center gap-1 pt-1">
@@ -98,39 +142,6 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
       </main>
     );
   }
-
-  const [data, setData] = useState<AdminAnalyticsData>(initialData);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [lastSyncedAt, setLastSyncedAt] = useState<Date>(new Date());
-
-  const refreshLiveStats = useCallback(async () => {
-    setIsSyncing(true);
-    try {
-      const fresh = await fetchAdminDashboardData();
-      setData(fresh);
-      setLastSyncedAt(new Date());
-    } catch (e) {
-      console.warn("Failed to refresh live admin stats:", e);
-    } finally {
-      setIsSyncing(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    const supabase = createClient();
-    const channel = supabase
-      .channel("admin:realtime_dashboard")
-      .on("postgres_changes", { event: "*", schema: "public", table: "quiz_submissions" }, () => refreshLiveStats())
-      .on("postgres_changes", { event: "*", schema: "public", table: "birthday_wishes" }, () => refreshLiveStats())
-      .subscribe();
-
-    const interval = setInterval(() => refreshLiveStats(), 8000);
-    return () => {
-      supabase.removeChannel(channel);
-      clearInterval(interval);
-    };
-  }, [isAuthenticated, refreshLiveStats]);
 
   const {
     totalParticipants,

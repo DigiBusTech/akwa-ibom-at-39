@@ -52,7 +52,8 @@ const config: Config = {
         "float": "float 6s ease-in-out infinite",
         "spin-reverse": "spin-reverse 1.2s linear infinite",
         "pulse-fast": "pulse 0.9s cubic-bezier(0.4, 0, 0.6, 1) infinite",
-        "marquee": "marquee 30s linear infinite",
+        "marquee": "marquee 80s linear infinite",
+        "marquee-slow": "marquee 120s linear infinite",
       },
       keyframes: {
         float: {
