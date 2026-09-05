@@ -22,7 +22,7 @@ import type { QuestionWithOptions } from "@/types/database";
 import { POPULAR_DIASPORA_LOCATIONS } from "@/lib/diaspora";
 import { fetchQuizQuestions, submitQuizAnswers } from "@/app/actions/quiz";
 
-const TIMER_SECONDS = 15;
+const TIMER_SECONDS = 25;
 
 interface AnswerRecord {
   question_id: string;
@@ -104,6 +104,9 @@ export default function QuizPage() {
     setNameError("");
     setStep("QUIZ");
     setTimeLeft(TIMER_SECONDS);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    }
   };
 
   // Submit all collected answers and redirect
@@ -161,6 +164,9 @@ export default function QuizPage() {
           setSelectedOptionId(null);
           setTimeLeft(TIMER_SECONDS);
           setIsAdvancing(false);
+          if (typeof window !== "undefined") {
+            window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+          }
         }, 300);
       } else {
         // Quiz complete -> evaluate
@@ -199,6 +205,13 @@ export default function QuizPage() {
     };
   }, [step, currentIdx, isAdvancing, selectedOptionId, advanceQuestion]);
 
+  // Auto-scroll to top when entering quiz or switching questions
+  useEffect(() => {
+    if (step === "QUIZ" && typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    }
+  }, [step, currentIdx]);
+
   // Option Click Handler
   const handleOptionClick = (optionId: string) => {
     if (isAdvancing) return;
@@ -209,16 +222,16 @@ export default function QuizPage() {
     }, 280);
   };
 
-  // Timer Color Threshold
+  // Timer Color Threshold (25s total)
   const getTimerStyles = (time: number) => {
-    if (time > 7) {
+    if (time > 10) {
       return {
         badgeBg: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
         barColor: "bg-emerald-500",
         pulse: false,
       };
     }
-    if (time > 3) {
+    if (time > 5) {
       return {
         badgeBg: "bg-amber-500/10 text-amber-400 border-amber-500/30",
         barColor: "bg-amber-500",
@@ -242,7 +255,13 @@ export default function QuizPage() {
   const optionPrefixes = ["A", "B", "C", "D"];
 
   return (
-    <main className="min-h-[85vh] w-full max-w-3xl mx-auto px-4 py-8 sm:px-6 flex flex-col justify-center">
+    <main
+      className={`w-full max-w-3xl mx-auto px-3.5 sm:px-6 flex flex-col transition-all duration-300 ${
+        step === "QUIZ"
+          ? "py-2 sm:py-4 justify-start"
+          : "min-h-[85vh] py-8 justify-center"
+      }`}
+    >
       <AnimatePresence mode="wait">
         {/* ================================================================= */}
         {/* STEP 1: USER DETAILS ONBOARDING                                    */}
@@ -413,7 +432,7 @@ export default function QuizPage() {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span>15s Timer per Question</span>
+                      <span>25s Timer per Question</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Award className="w-3.5 h-3.5 text-orange-400 shrink-0" />
@@ -440,24 +459,24 @@ export default function QuizPage() {
         {/* STEP 2: GAMIFIED QUESTION VIEW                                    */}
         {/* ================================================================= */}
         {step === "QUIZ" && currentQuestion && (
-          <div className="w-full space-y-6">
-            {/* Top Bar: Progress & Dynamic Timer */}
-            <div className="glass-panel p-4 rounded-2xl border border-slate-800/90 shadow-md space-y-3">
+          <div className="w-full space-y-3 sm:space-y-4">
+            {/* Top Bar: Progress & Dynamic Timer (Sticky so it's always in view on all screen sizes) */}
+            <div className="sticky top-16 sm:top-[4.25rem] z-30 glass-panel p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-800/90 shadow-lg space-y-2 backdrop-blur-xl bg-slate-950/95">
               <div className="flex items-center justify-between text-xs sm:text-sm">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-white">
                     Question {currentIdx + 1} of {questions.length}
                   </span>
                   {currentQuestion.category && (
-                    <span className="hidden sm:inline-flex px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300 font-medium text-xs">
+                    <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300 font-medium text-xs">
                       {currentQuestion.category.name}
                     </span>
                   )}
                 </div>
 
-                {/* 15-Second Animated Countdown */}
+                {/* 25-Second Animated Countdown */}
                 <div
-                  className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border font-mono font-bold text-sm ${
+                  className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full border font-mono font-bold text-xs sm:text-sm ${
                     timerStyle.badgeBg
                   } ${timerStyle.pulse ? "animate-pulse" : ""}`}
                 >
@@ -467,7 +486,7 @@ export default function QuizPage() {
               </div>
 
               {/* Progress Bar */}
-              <div className="w-full h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800/80">
+              <div className="w-full h-1.5 sm:h-2 bg-slate-900 rounded-full overflow-hidden border border-slate-800/80">
                 <motion.div
                   className="h-full bg-gradient-to-r from-orange-500 to-emerald-400"
                   initial={{ width: 0 }}
@@ -484,21 +503,21 @@ export default function QuizPage() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -24 }}
               transition={{ duration: 0.28, ease: "easeOut" }}
-              className="glass-panel p-6 sm:p-8 rounded-2xl border border-slate-800 shadow-xl space-y-6 relative overflow-hidden"
+              className="glass-panel p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-slate-800 shadow-xl space-y-3 sm:space-y-4 relative overflow-hidden"
             >
-              <div className="space-y-2">
+              <div className="space-y-1 sm:space-y-1.5">
                 {currentQuestion.category && (
-                  <div className="sm:hidden text-xs font-semibold text-orange-400 uppercase tracking-wider">
+                  <div className="sm:hidden text-[11px] font-semibold text-orange-400 uppercase tracking-wider">
                     {currentQuestion.category.name}
                   </div>
                 )}
-                <h2 className="text-xl sm:text-2xl font-bold text-white leading-relaxed">
+                <h2 className="text-base sm:text-xl md:text-2xl font-bold text-white leading-snug sm:leading-relaxed">
                   {currentQuestion.question_text}
                 </h2>
               </div>
 
-              {/* 4 Interactive Option Buttons (min-h-[3.5rem] = 56px for mobile touch) */}
-              <div className="grid grid-cols-1 gap-3 pt-2">
+              {/* 4 Interactive Option Buttons (Compact touch sizing to fit any screen height) */}
+              <div className="grid grid-cols-1 gap-2 sm:gap-2.5 pt-1">
                 {currentQuestion.options.map((option, optIdx) => {
                   const isSelected = selectedOptionId === option.id;
                   const prefix = optionPrefixes[optIdx] || `${optIdx + 1}`;
@@ -507,18 +526,18 @@ export default function QuizPage() {
                     <motion.button
                       key={option.id}
                       type="button"
-                      whileHover={{ scale: 1.01 }}
+                      whileHover={{ scale: 1.005 }}
                       whileTap={{ scale: 0.99 }}
                       onClick={() => handleOptionClick(option.id)}
                       disabled={isAdvancing}
-                      className={`w-full min-h-[3.5rem] p-3.5 sm:p-4 rounded-xl text-left font-medium transition duration-150 flex items-center gap-3.5 border touch-manipulation cursor-pointer ${
+                      className={`w-full min-h-[2.85rem] sm:min-h-[3.25rem] p-2.5 sm:p-3.5 rounded-xl text-left font-medium transition duration-150 flex items-center gap-2.5 sm:gap-3 border touch-manipulation cursor-pointer ${
                         isSelected
                           ? "bg-orange-500/20 border-orange-400 text-white shadow-md shadow-orange-500/20"
                           : "bg-slate-900/70 hover:bg-slate-800/80 border-slate-800/80 hover:border-slate-700 text-slate-200"
                       }`}
                     >
                       <span
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 transition ${
+                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 transition ${
                           isSelected
                             ? "bg-orange-500 text-white"
                             : "bg-slate-800 text-slate-400 group-hover:text-white"
@@ -526,11 +545,11 @@ export default function QuizPage() {
                       >
                         {prefix}
                       </span>
-                      <span className="text-sm sm:text-base flex-1 break-words leading-snug">
+                      <span className="text-xs sm:text-sm md:text-base flex-1 break-words leading-tight sm:leading-snug">
                         {option.option_text}
                       </span>
                       {isSelected && (
-                        <CheckCircle2 className="w-5 h-5 text-orange-400 shrink-0 animate-in fade-in" />
+                        <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-orange-400 shrink-0 animate-in fade-in" />
                       )}
                     </motion.button>
                   );
@@ -538,9 +557,9 @@ export default function QuizPage() {
               </div>
 
               {/* Footer Hint */}
-              <div className="flex items-center justify-between text-xs text-slate-500 pt-2 border-t border-slate-800/60">
+              <div className="flex items-center justify-between text-[11px] sm:text-xs text-slate-500 pt-1 sm:pt-2 border-t border-slate-800/60">
                 <span className="flex items-center gap-1">
-                  <HelpCircle className="w-3.5 h-3.5" />
+                  <HelpCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                   Tap an option to confirm your answer
                 </span>
                 <span>Auto-advances if time expires</span>
