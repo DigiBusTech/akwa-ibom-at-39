@@ -65,6 +65,7 @@ export async function checkRateLimit(
           ["EXPIRE", key, Math.ceil(windowMs / 1000)],
         ]),
         cache: "no-store",
+        signal: AbortSignal.timeout(800),
       });
 
       if (pipelineRes.ok) {

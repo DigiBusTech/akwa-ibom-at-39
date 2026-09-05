@@ -1,3 +1,5 @@
+"use server";
+
 import { createClient } from "@/lib/supabase/server";
 import { fetchAllWishesForAdmin } from "./wishes";
 import type { BirthdayWish } from "@/types/database";
@@ -73,35 +75,48 @@ export async function fetchAdminDashboardData(): Promise<AdminAnalyticsData> {
           category: name.toLowerCase().includes("diaspora") ? "Diaspora" : "Home",
         }));
 
-      const avgPct = totalQuestionsSum > 0 ? Math.round((totalScoreSum / totalQuestionsSum) * 100) : 75;
-      const avgPts = rows.length > 0 ? Number((totalScoreSum / rows.length).toFixed(1)) : 11.2;
+      const avgPct = totalQuestionsSum > 0 ? Math.round((totalScoreSum / totalQuestionsSum) * 100) : 0;
+      const avgPts = rows.length > 0 ? Number((totalScoreSum / rows.length).toFixed(1)) : 0;
 
       return {
-        totalParticipants: totalCount || rows.length,
+        totalParticipants: totalCount ?? rows.length,
         averageScorePercentage: avgPct,
         averageScorePoints: avgPts,
         homeVsDiaspora: [
-          { name: "Home (31 LGAs)", value: home || 5200, color: "#007A33" },
-          { name: "Diaspora Network", value: diaspora || 2950, color: "#FF6600" },
+          { name: "Home (31 LGAs)", value: home, color: "#007A33" },
+          { name: "Diaspora Network", value: diaspora, color: "#FF6600" },
         ],
-        top10Locations: sorted.length >= 5 ? sorted : DEFAULT_LOCATIONS,
+        top10Locations: sorted,
+        recentWishes,
+      };
+    } else if (!error) {
+      // Valid database connection with zero submissions yet
+      return {
+        totalParticipants: 0,
+        averageScorePercentage: 0,
+        averageScorePoints: 0,
+        homeVsDiaspora: [
+          { name: "Home (31 LGAs)", value: 0, color: "#007A33" },
+          { name: "Diaspora Network", value: 0, color: "#FF6600" },
+        ],
+        top10Locations: [],
         recentWishes,
       };
     }
   } catch (err) {
-    console.warn("Using baseline pitch dataset for admin stats:", err);
+    console.warn("Could not query live admin stats from Supabase:", err);
   }
 
-  // Pitch-ready benchmark data
+  // Graceful offline fallback
   return {
-    totalParticipants: 8150,
-    averageScorePercentage: 74,
-    averageScorePoints: 11.1,
+    totalParticipants: 0,
+    averageScorePercentage: 0,
+    averageScorePoints: 0,
     homeVsDiaspora: [
-      { name: "Home (31 LGAs)", value: 5200, color: "#007A33" },
-      { name: "Diaspora Network", value: 2950, color: "#FF6600" },
+      { name: "Home (31 LGAs)", value: 0, color: "#007A33" },
+      { name: "Diaspora Network", value: 0, color: "#FF6600" },
     ],
-    top10Locations: DEFAULT_LOCATIONS,
+    top10Locations: [],
     recentWishes,
   };
 }

@@ -9,7 +9,7 @@ import "./globals.css";
 const outfit = Outfit({
   subsets: ["latin"],
   variable: "--font-outfit",
-  weight: ["300", "400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 export const viewport: Viewport = {
@@ -25,8 +25,12 @@ export const metadata: Metadata = {
     "Celebrate 39 years of the Land of Promise! Test your heritage knowledge with the Akwa Ibom @ 39 Trivia challenge, earn commemorative badges, and generate your customized anniversary celebration display picture. Powered by Sabi AI Technologies Ltd.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/icons/icon-192x192.png",
-    apple: "/icons/apple-touch-icon.png",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-icon.svg",
+    shortcut: "/favicon.svg",
   },
   appleWebApp: {
     capable: true,

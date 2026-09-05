@@ -20,11 +20,17 @@ import {
   Layers
 } from "lucide-react";
 import { fetchBirthdayWishes } from "@/app/actions/wishes";
+import { fetchCampaignStats } from "@/app/actions/stats";
 import { BirthdayTicker } from "@/components/BirthdayTicker";
 import { LiveHeroCounter, TopRegionsLeaderboard } from "@/components/LiveStats";
 
+export const revalidate = 10;
+
 export default async function Home() {
-  const wishes = await fetchBirthdayWishes();
+  const [wishes, stats] = await Promise.all([
+    fetchBirthdayWishes(),
+    fetchCampaignStats(),
+  ]);
 
   const categories = [
     { name: "Food & Cuisine", count: 3, icon: Utensils, color: "text-amber-400" },
@@ -59,7 +65,7 @@ export default async function Home() {
       <BirthdayTicker initialWishes={wishes} />
 
       {/* Top Regions Leaderboard directly below the Wish Ticker */}
-      <TopRegionsLeaderboard />
+      <TopRegionsLeaderboard initialStats={stats} />
 
       {/* Hero Section: Root Connection (Home & Diaspora) */}
       <div className="text-center space-y-6 pt-2">
@@ -71,7 +77,7 @@ export default async function Home() {
             <span className="hidden sm:inline text-orange-400">Land of Promise</span>
           </div>
           {/* Live Hero Demographic Counter */}
-          <LiveHeroCounter />
+          <LiveHeroCounter initialStats={stats} />
         </div>
 
         <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight">

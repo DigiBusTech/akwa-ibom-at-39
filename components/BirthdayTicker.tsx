@@ -1,13 +1,30 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, Heart, ChevronUp, ChevronDown, CheckCircle2 } from "lucide-react";
 import type { BirthdayWish } from "@/types/database";
 import { WishAccordionForm } from "./WishAccordionForm";
+import { createClient } from "@/lib/supabase/client";
+import { fetchBirthdayWishes } from "@/app/actions/wishes";
 
 interface BirthdayTickerProps {
   initialWishes?: BirthdayWish[];
+}
+
+function WishPill({ wish }: { wish: BirthdayWish }) {
+  return (
+    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-slate-800 text-xs text-slate-200 shrink-0 shadow-sm">
+      <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 shrink-0" />
+      <span className="font-semibold text-orange-400">{wish.author_name}</span>
+      {wish.lga && (
+        <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+          {wish.lga}
+        </span>
+      )}
+      <span className="text-slate-300 italic">&ldquo;{wish.wish_text}&rdquo;</span>
+    </div>
+  );
 }
 
 export function BirthdayTicker({ initialWishes = [] }: BirthdayTickerProps) {
@@ -15,8 +32,46 @@ export function BirthdayTicker({ initialWishes = [] }: BirthdayTickerProps) {
   const [isAccordionOpen, setIsAccordionOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Real-time synchronization for newly posted wishes
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("public:birthday_wishes_ticker")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "birthday_wishes" },
+        async () => {
+          try {
+            const fresh = await fetchBirthdayWishes();
+            if (fresh && fresh.length > 0) {
+              setWishes(fresh);
+            }
+          } catch {
+            // fallback gracefully
+          }
+        }
+      )
+      .subscribe();
+
+    const interval = setInterval(async () => {
+      try {
+        const fresh = await fetchBirthdayWishes();
+        if (fresh && fresh.length > 0) {
+          setWishes(fresh);
+        }
+      } catch {
+        // fallback gracefully
+      }
+    }, 10000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, []);
+
   const handleWishSuccess = (newWish: BirthdayWish, authorName: string) => {
-    setWishes((prev) => [newWish, ...prev]);
+    setWishes((prev) => [newWish, ...prev.filter((w) => w.id !== newWish.id)]);
     setIsAccordionOpen(false);
     setToastMessage(`Thank you, ${authorName}! Your anniversary wish has been broadcast live.`);
     setTimeout(() => {
@@ -24,7 +79,14 @@ export function BirthdayTicker({ initialWishes = [] }: BirthdayTickerProps) {
     }, 5000);
   };
 
-  const displayList = wishes.length > 0 ? [...wishes, ...wishes] : [];
+  const trackItems = useMemo(() => {
+    if (wishes.length === 0) return [];
+    let list = [...wishes];
+    while (list.length < 8) {
+      list = [...list, ...wishes];
+    }
+    return list;
+  }, [wishes]);
 
   return (
     <div className="w-full relative rounded-2xl bg-gradient-to-r from-orange-950/40 via-slate-900/80 to-emerald-950/40 border border-orange-500/20 backdrop-blur-md overflow-hidden">
@@ -77,23 +139,21 @@ export function BirthdayTicker({ initialWishes = [] }: BirthdayTickerProps) {
         )}
       </AnimatePresence>
 
-      {/* Marquee Ticker */}
-      <div className="relative py-3 overflow-hidden select-none">
-        <div className="flex whitespace-nowrap animate-marquee hover:[animation-play-state:paused] gap-6 px-4">
-          {displayList.map((w, idx) => (
-            <div
-              key={`${w.id}-${idx}`}
-              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/80 border border-slate-800 text-xs text-slate-200"
-            >
-              <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 shrink-0" />
-              <span className="font-semibold text-orange-400">{w.author_name}</span>
-              {w.lga && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                  {w.lga}
-                </span>
-              )}
-              <span className="text-slate-300 italic">&ldquo;{w.wish_text}&rdquo;</span>
-            </div>
+      {/* Dual-Track Seamless Infinite Marquee */}
+      <div className="relative py-3 overflow-hidden select-none flex group">
+        {/* Track 1 */}
+        <div className="flex shrink-0 animate-marquee group-hover:[animation-play-state:paused] items-center gap-6 pr-6">
+          {trackItems.map((w, idx) => (
+            <WishPill key={`t1-${w.id}-${idx}`} wish={w} />
+          ))}
+        </div>
+        {/* Track 2 (Loops seamlessly right behind Track 1) */}
+        <div
+          className="flex shrink-0 animate-marquee group-hover:[animation-play-state:paused] items-center gap-6 pr-6"
+          aria-hidden="true"
+        >
+          {trackItems.map((w, idx) => (
+            <WishPill key={`t2-${w.id}-${idx}`} wish={w} />
           ))}
         </div>
       </div>

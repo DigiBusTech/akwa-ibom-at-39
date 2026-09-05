@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { Database, PublicQuizOption, QuestionWithOptions } from "@/types/database";
 import type { Json } from "@/types/database";
@@ -433,6 +434,10 @@ export async function submitQuizAnswers(payload: SubmitQuizPayload): Promise<Qui
 
       if (!insertError && submission?.id) {
         submissionId = submission.id;
+        try {
+          revalidatePath("/");
+          revalidatePath("/admin");
+        } catch {}
       }
 
       return {

@@ -41,39 +41,51 @@ export function AdminCharts({ homeVsDiaspora, top10Locations }: AdminChartsProps
           </span>
         </div>
 
-        <div className="h-72 w-full flex items-center justify-center">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={homeVsDiaspora}
-                cx="50%"
-                cy="50%"
-                innerRadius={65}
-                outerRadius={95}
-                paddingAngle={4}
-                dataKey="value"
-                label={({ name, percent }: { name?: string; percent?: number }) =>
-                  `${name?.split(" ")[0]} ${(Number(percent || 0) * 100).toFixed(0)}%`
-                }
-              >
-                {homeVsDiaspora.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} stroke="#090d16" strokeWidth={2} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(val: any) => [Number(val || 0).toLocaleString(), "Participants"]}
-                contentStyle={{
-                  backgroundColor: "#020617",
-                  borderColor: "#334155",
-                  borderRadius: "12px",
-                  fontSize: "12px",
-                  color: "#fff",
-                }}
-              />
-              <Legend verticalAlign="bottom" height={36} iconType="circle" />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+        {totalSubmissions === 0 ? (
+          <div className="h-72 w-full flex flex-col items-center justify-center text-center p-4">
+            <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-3">
+              <span className="text-xl">🌍</span>
+            </div>
+            <p className="text-sm font-semibold text-slate-300">No Demographic Submissions Yet</p>
+            <p className="text-xs text-slate-500 max-w-xs mt-1">
+              Live Home vs. Diaspora percentages will appear dynamically as users complete trivia.
+            </p>
+          </div>
+        ) : (
+          <div className="h-72 w-full flex items-center justify-center">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={homeVsDiaspora}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={65}
+                  outerRadius={95}
+                  paddingAngle={4}
+                  dataKey="value"
+                  label={({ name, percent }: { name?: string; percent?: number }) =>
+                    `${name?.split(" ")[0]} ${(Number(percent || 0) * 100).toFixed(0)}%`
+                  }
+                >
+                  {homeVsDiaspora.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} stroke="#090d16" strokeWidth={2} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(val: any) => [Number(val || 0).toLocaleString(), "Participants"]}
+                  contentStyle={{
+                    backgroundColor: "#020617",
+                    borderColor: "#334155",
+                    borderRadius: "12px",
+                    fontSize: "12px",
+                    color: "#fff",
+                  }}
+                />
+                <Legend verticalAlign="bottom" height={36} iconType="circle" />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* Top 10 Participating Locations Bar Chart */}
@@ -92,37 +104,49 @@ export function AdminCharts({ homeVsDiaspora, top10Locations }: AdminChartsProps
           </span>
         </div>
 
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={top10Locations}
-              layout="vertical"
-              margin={{ top: 5, right: 25, left: 20, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false} />
-              <XAxis type="number" stroke="#64748b" fontSize={11} />
-              <YAxis
-                type="category"
-                dataKey="name"
-                stroke="#94a3b8"
-                fontSize={11}
-                width={100}
-                tickFormatter={(val) => (val.length > 14 ? `${val.slice(0, 12)}…` : val)}
-              />
-              <Tooltip
-                formatter={(val: any) => [Number(val || 0).toLocaleString(), "Participants"]}
-                contentStyle={{
-                  backgroundColor: "#020617",
-                  borderColor: "#334155",
-                  borderRadius: "12px",
-                  fontSize: "12px",
-                  color: "#fff",
-                }}
-              />
-              <Bar dataKey="count" fill="#FF6600" radius={[0, 6, 6, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {top10Locations.length === 0 ? (
+          <div className="h-72 w-full flex flex-col items-center justify-center text-center p-4">
+            <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mb-3">
+              <span className="text-xl">📍</span>
+            </div>
+            <p className="text-sm font-semibold text-slate-300">No Location Rankings Yet</p>
+            <p className="text-xs text-slate-500 max-w-xs mt-1">
+              Top locations will rank in real-time as participants submit answers from LGAs &amp; global diaspora chapters.
+            </p>
+          </div>
+        ) : (
+          <div className="h-72 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={top10Locations}
+                layout="vertical"
+                margin={{ top: 5, right: 25, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false} />
+                <XAxis type="number" stroke="#64748b" fontSize={11} />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  stroke="#94a3b8"
+                  fontSize={11}
+                  width={100}
+                  tickFormatter={(val) => (val.length > 14 ? `${val.slice(0, 12)}…` : val)}
+                />
+                <Tooltip
+                  formatter={(val: any) => [Number(val || 0).toLocaleString(), "Participants"]}
+                  contentStyle={{
+                    backgroundColor: "#020617",
+                    borderColor: "#334155",
+                    borderRadius: "12px",
+                    fontSize: "12px",
+                    color: "#fff",
+                  }}
+                />
+                <Bar dataKey="count" fill="#FF6600" radius={[0, 6, 6, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
     </div>
   );

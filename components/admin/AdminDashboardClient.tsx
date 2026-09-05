@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Users,
   Award,
@@ -12,8 +12,11 @@ import {
   Building,
   TrendingUp,
   Download,
+  RotateCcw,
 } from "lucide-react";
 import type { AdminAnalyticsData } from "@/app/actions/admin";
+import { fetchAdminDashboardData } from "@/app/actions/admin";
+import { createClient } from "@/lib/supabase/client";
 import { AdminCharts } from "./AdminCharts";
 import { WishesTable } from "./WishesTable";
 import { AkwaIbomMap } from "../AkwaIbomMap";
@@ -96,6 +99,39 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
     );
   }
 
+  const [data, setData] = useState<AdminAnalyticsData>(initialData);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncedAt, setLastSyncedAt] = useState<Date>(new Date());
+
+  const refreshLiveStats = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      const fresh = await fetchAdminDashboardData();
+      setData(fresh);
+      setLastSyncedAt(new Date());
+    } catch (e) {
+      console.warn("Failed to refresh live admin stats:", e);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel("admin:realtime_dashboard")
+      .on("postgres_changes", { event: "*", schema: "public", table: "quiz_submissions" }, () => refreshLiveStats())
+      .on("postgres_changes", { event: "*", schema: "public", table: "birthday_wishes" }, () => refreshLiveStats())
+      .subscribe();
+
+    const interval = setInterval(() => refreshLiveStats(), 8000);
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, [isAuthenticated, refreshLiveStats]);
+
   const {
     totalParticipants,
     averageScorePercentage,
@@ -103,11 +139,11 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
     homeVsDiaspora,
     top10Locations,
     recentWishes,
-  } = initialData;
+  } = data;
 
-  const diasporaPct = Math.round(
-    (homeVsDiaspora[1].value / (homeVsDiaspora[0].value + homeVsDiaspora[1].value)) * 100
-  );
+  const diasporaItem = homeVsDiaspora.find((x) => x.name.toLowerCase().includes("diaspora"));
+  const diasporaCount = diasporaItem?.value ?? 0;
+  const diasporaPct = totalParticipants > 0 ? Math.round((diasporaCount / totalParticipants) * 100) : 0;
 
   return (
     <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-8">
@@ -129,6 +165,14 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => refreshLiveStats()}
+              disabled={isSyncing}
+              className="px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-orange-500/50 text-white font-semibold text-xs inline-flex items-center gap-2 transition cursor-pointer disabled:opacity-60"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 text-orange-400 ${isSyncing ? "animate-spin" : ""}`} />
+              <span>{isSyncing ? "Syncing..." : "Refresh Live"}</span>
+            </button>
             <button
               onClick={() => window.print()}
               className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-500 text-white font-semibold text-xs inline-flex items-center gap-2 transition"
@@ -181,7 +225,7 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
             {diasporaPct}%
           </div>
           <div className="text-xs text-orange-400 font-medium">
-            {homeVsDiaspora[1].value.toLocaleString()} Global participants
+            {diasporaCount.toLocaleString()} Global participants
           </div>
         </div>
 
@@ -191,7 +235,7 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
             <Sparkles className="w-4 h-4 text-cyan-400" />
           </div>
           <div className="text-3xl font-black text-white">
-            {recentWishes.length}+
+            {recentWishes.length}
           </div>
           <div className="text-xs text-slate-400">
             Live on celebratory ticker

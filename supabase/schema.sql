@@ -91,8 +91,24 @@ CREATE POLICY "Public Read Submissions" ON quiz_submissions FOR SELECT USING (tr
 DROP POLICY IF EXISTS "Public Insert Wishes" ON birthday_wishes;
 CREATE POLICY "Public Insert Wishes" ON birthday_wishes FOR INSERT WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Public Read Approved Wishes" ON birthday_wishes;
-CREATE POLICY "Public Read Approved Wishes" ON birthday_wishes FOR SELECT USING (is_approved = true);
+DROP POLICY IF EXISTS "Public Read All Wishes" ON birthday_wishes;
+CREATE POLICY "Public Read All Wishes" ON birthday_wishes FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Public Update Wishes" ON birthday_wishes;
+CREATE POLICY "Public Update Wishes" ON birthday_wishes FOR UPDATE USING (true) WITH CHECK (true);
+
+-- Enable Supabase Realtime Replication for Live Tickers & Realtime Analytics
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE quiz_submissions;
+EXCEPTION WHEN others THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE birthday_wishes;
+EXCEPTION WHEN others THEN NULL;
+END $$;
 
 -- ============================================================================
 -- SECURE PUBLIC VIEW (Omits `is_correct` column to prevent client bundle cheating)

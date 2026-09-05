@@ -1,3 +1,5 @@
+"use server";
+
 import { createClient } from "@/lib/supabase/server";
 
 export interface TopRegion {
@@ -39,11 +41,11 @@ export async function fetchCampaignStats(): Promise<CampaignStats> {
 
     if (countErr || !rows || rows.length === 0) {
       return {
-        totalParticipants: BASELINE_PARTICIPANTS + (rawCount || 0),
-        topRegions: BASELINE_TOP_REGIONS,
-        homeCount: 3200,
-        diasporaCount: 1650,
-        averageScorePct: 76,
+        totalParticipants: rawCount || 0,
+        topRegions: [],
+        homeCount: 0,
+        diasporaCount: 0,
+        averageScorePct: 0,
       };
     }
 
@@ -55,10 +57,16 @@ export async function fetchCampaignStats(): Promise<CampaignStats> {
     let diasporaCount = 0;
 
     for (const row of rows) {
-      const loc = (row.lga || "Uyo LGA").trim();
+      const loc = (row.lga || "Akwa Ibom").trim();
       countsMap.set(loc, (countsMap.get(loc) || 0) + 1);
 
-      if (loc.toLowerCase().includes("diaspora") || loc.toLowerCase().includes("usa") || loc.toLowerCase().includes("uk")) {
+      if (
+        loc.toLowerCase().includes("diaspora") ||
+        loc.toLowerCase().includes("usa") ||
+        loc.toLowerCase().includes("uk") ||
+        loc.toLowerCase().includes("benin") ||
+        loc.toLowerCase().includes("canada")
+      ) {
         diasporaCount++;
       } else {
         homeCount++;
@@ -74,27 +82,33 @@ export async function fetchCampaignStats(): Promise<CampaignStats> {
       .map(([name, count]) => ({
         name,
         count,
-        type: name.toLowerCase().includes("diaspora") ? ("diaspora" as const) : ("home" as const),
+        type: (name.toLowerCase().includes("diaspora") ||
+        name.toLowerCase().includes("usa") ||
+        name.toLowerCase().includes("uk") ||
+        name.toLowerCase().includes("benin") ||
+        name.toLowerCase().includes("canada"))
+          ? ("diaspora" as const)
+          : ("home" as const),
       }));
 
-    const topRegions = sorted.length >= 3 ? sorted.slice(0, 3) : BASELINE_TOP_REGIONS;
-    const avgScore = totalPossibleSum > 0 ? Math.round((totalScoreSum / totalPossibleSum) * 100) : 74;
+    const topRegions = sorted.slice(0, 3);
+    const avgScore = totalPossibleSum > 0 ? Math.round((totalScoreSum / totalPossibleSum) * 100) : 0;
 
     return {
-      totalParticipants: Math.max(BASELINE_PARTICIPANTS, (rawCount || rows.length)),
+      totalParticipants: rawCount ?? rows.length,
       topRegions,
-      homeCount: homeCount || 3150,
-      diasporaCount: diasporaCount || 1700,
-      averageScorePct: avgScore || 75,
+      homeCount,
+      diasporaCount,
+      averageScorePct: avgScore,
     };
   } catch (e) {
     console.error("fetchCampaignStats error:", e);
     return {
-      totalParticipants: BASELINE_PARTICIPANTS,
-      topRegions: BASELINE_TOP_REGIONS,
-      homeCount: 3200,
-      diasporaCount: 1650,
-      averageScorePct: 76,
+      totalParticipants: 0,
+      topRegions: [],
+      homeCount: 0,
+      diasporaCount: 0,
+      averageScorePct: 0,
     };
   }
 }
