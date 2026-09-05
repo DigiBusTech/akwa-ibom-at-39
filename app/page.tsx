@@ -126,13 +126,21 @@ export default async function Home() {
               Top 3 LGAs with highest participation &amp; score points will be honored on September 23rd Statehood Day. Take the quiz, get your bragging rights card, and push your LGA to #1!
             </p>
           </div>
-          <Link
-            href="/quiz"
-            className="shrink-0 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-lg shadow-orange-500/20 transition flex items-center gap-1.5"
-          >
-            <span>Represent Your LGA</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              href="/leaderboard"
+              className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold text-xs transition flex items-center gap-1.5"
+            >
+              <span>View Leaderboard</span>
+            </Link>
+            <Link
+              href="/quiz"
+              className="px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-lg shadow-orange-500/20 transition flex items-center gap-1.5"
+            >
+              <span>Take Challenge</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
 
         </div>

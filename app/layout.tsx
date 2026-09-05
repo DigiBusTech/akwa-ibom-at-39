@@ -106,7 +106,13 @@ export default function RootLayout({
               </div>
             </Link>
 
-            <nav className="flex items-center gap-3 sm:gap-4 text-xs font-semibold">
+            <nav className="flex items-center gap-2 sm:gap-3 text-xs font-semibold">
+              <Link
+                href="/leaderboard"
+                className="px-3 py-1.5 rounded-lg bg-slate-900 text-slate-300 border border-slate-800 hover:text-white hover:border-slate-700 transition flex items-center gap-1.5"
+              >
+                <span>Leaderboard</span>
+              </Link>
               <Link
                 href="/quiz"
                 className="px-3.5 py-1.5 rounded-lg bg-orange-500/20 text-orange-300 border border-orange-500/40 hover:bg-orange-500/30 transition flex items-center gap-1.5"

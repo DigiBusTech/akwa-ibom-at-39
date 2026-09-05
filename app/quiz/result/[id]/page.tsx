@@ -172,13 +172,22 @@ export default async function QuizResultPage({ params, searchParams }: ResultPag
             You scored <strong className="text-emerald-400">{score}/{total}</strong> representing <strong className="text-orange-400">{userLga || "Akwa Ibom State"}</strong>! Top 3 LGAs with highest participation &amp; score points will be honored on September 23rd Statehood Day.
           </p>
         </div>
-        <Link
-          href="/quiz"
-          className="shrink-0 px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-200 hover:text-white text-xs font-bold transition flex items-center gap-1.5"
-        >
-          <RotateCcw className="w-3.5 h-3.5 text-orange-400" />
-          <span>Retake Quiz</span>
-        </Link>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href="/leaderboard"
+            className="px-3.5 py-1.5 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-300 hover:text-white text-xs font-bold transition flex items-center gap-1.5"
+          >
+            <Trophy className="w-3.5 h-3.5" />
+            <span>Leaderboard</span>
+          </Link>
+          <Link
+            href="/quiz"
+            className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-200 hover:text-white text-xs font-bold transition flex items-center gap-1.5"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-orange-400" />
+            <span>Retake</span>
+          </Link>
+        </div>
       </div>
 
 

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { 
   Download, 
   Upload, 
@@ -17,10 +18,14 @@ import {
   Camera, 
   Flame, 
   MessageCircle,
-  HelpCircle
+  HelpCircle,
+  X,
+  Globe,
+  ArrowRight
 } from "lucide-react";
 import { renderAnniversaryFrame } from "@/lib/canvas-frame";
 import { renderChallengeCard } from "@/lib/canvas-challenge-card";
+import { isDiasporaLocation, extractCountryFromDiaspora } from "@/lib/diaspora";
 
 interface DPGeneratorProps {
   userName: string;
@@ -65,6 +70,7 @@ export function DPGenerator({
     if (!challengeCanvasRef.current) return;
     renderChallengeCard({
       canvas: challengeCanvasRef.current,
+      userImage: imageObj,
       userName,
       userLga,
       badgeTitle,
@@ -73,7 +79,7 @@ export function DPGenerator({
       percentage,
       submissionId,
     });
-  }, [userName, userLga, badgeTitle, score, total, percentage, submissionId]);
+  }, [imageObj, userName, userLga, badgeTitle, score, total, percentage, submissionId]);
 
   // Redraw DP Frame Canvas
   const redrawDP = useCallback(() => {
@@ -183,10 +189,20 @@ export function DPGenerator({
   const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
   const verifyUrl = `${baseUrl}/verify/${submissionId}?score=${score}&total=${total}&percentage=${percentage}&badge=${encodeURIComponent(badgeTitle)}&name=${encodeURIComponent(userName)}&lga=${encodeURIComponent(userLga)}`;
 
-  // Tailored share text depending on active tab
-  const shareText = activeTab === "challenge"
-    ? `🥊 Can your LGA beat my ${score}/${total} (${percentage}%) score? I just put ${percentage}% on the board for ${userLga || "Akwa Ibom"} in the official Akwa Ibom @ 39 Heritage Showdown! Top 3 LGAs will be celebrated on Sept 23rd Statehood Day. Take the challenge now to vote for your LGA in the polls:`
-    : `🎉 Akwa Ibom @ 39 Statehood Jubilee: I scored ${score}/${total} (${percentage}%) representing ${userLga || "Akwa Ibom"} and claimed the "${badgeTitle}" badge! Pre-generate your Sept 23rd official commemorative DP frame here:`;
+  const isDiaspora = isDiasporaLocation(userLga);
+  const diasporaMeta = isDiaspora ? extractCountryFromDiaspora(userLga) : null;
+
+  // Tailored share text depending on active tab and region
+  let shareText = "";
+  if (activeTab === "challenge") {
+    if (isDiaspora && diasporaMeta) {
+      shareText = `🥊 Can your country or chapter beat my ${score}/${total} (${percentage}%) score? I just put ${percentage}% on the board for the ${diasporaMeta.country} Diaspora Chapter in the Akwa Ibom @ 39 Statehood Jubilee Challenge! Defend our residence country on the Global Leaderboard:`;
+    } else {
+      shareText = `🥊 Can your LGA beat my ${score}/${total} (${percentage}%) score? I just put ${percentage}% on the board for ${userLga || "Akwa Ibom"} in the official Akwa Ibom @ 39 Heritage Showdown! Top 3 LGAs will be celebrated on Sept 23rd Statehood Day. Take the challenge now to vote for your LGA:`;
+    }
+  } else {
+    shareText = `🎉 Akwa Ibom @ 39 Statehood Jubilee: I scored ${score}/${total} (${percentage}%) representing ${userLga || "Akwa Ibom"} and claimed the "${badgeTitle}" badge! Pre-generate your Sept 23rd official commemorative DP frame here:`;
+  }
 
   const copyVerifyLink = () => {
     navigator.clipboard.writeText(verifyUrl);
@@ -245,18 +261,26 @@ export function DPGenerator({
         </button>
       </div>
 
-      {/* Mode 1: Viral LGA Challenge Card (Instant Bragging Rights • No Photo Needed) */}
+      {/* Mode 1: Viral LGA Challenge Card (Instant Bragging Rights • Optional Photo) */}
       {activeTab === "challenge" && (
         <div className="space-y-4 animate-in fade-in duration-300">
           <div className="p-4 rounded-2xl bg-gradient-to-r from-orange-500/15 via-amber-500/10 to-emerald-500/15 border border-orange-500/30 text-left space-y-1.5">
             <div className="flex items-center gap-2">
               <Flame className="w-4 h-4 text-orange-400 shrink-0" />
               <h4 className="text-xs sm:text-sm font-bold text-white">
-                Battle of the 31 LGAs • 18 Days to September 23rd
+                {isDiaspora ? "Global Diaspora Showdown" : "Battle of the 31 LGAs • 18 Days to September 23rd"}
               </h4>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Every completed quiz counts towards your LGA&apos;s score. The <strong>Top 3 LGAs</strong> with the highest citizen contribution will be celebrated on Statehood Day. Share your scorecard now to rally people from <strong>{userLga || "your LGA"}</strong>!
+              {isDiaspora && diasporaMeta ? (
+                <>
+                  Every completed quiz elevates your residence country on the Global Diaspora table. Defend <strong>{diasporaMeta.flag} {diasporaMeta.country}</strong> by sharing your scorecard!
+                </>
+              ) : (
+                <>
+                  Every completed quiz counts towards your LGA&apos;s score. Rankings are decided by both participant mobilization and quiz scores. Share your scorecard now to rally <strong>{userLga || "your LGA"}</strong>!
+                </>
+              )}
             </p>
           </div>
 
@@ -265,6 +289,50 @@ export function DPGenerator({
               ref={challengeCanvasRef}
               className="w-full aspect-square block"
             />
+          </div>
+
+          {/* Profile Picture Option for Challenge Card */}
+          <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-slate-800 border border-orange-500/40 flex items-center justify-center shrink-0 overflow-hidden">
+                {imageObj ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={imageObj.src} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <Camera className="w-4 h-4 text-orange-400" />
+                )}
+              </div>
+              <div>
+                <p className="font-bold text-white">
+                  {imageObj ? "Candidate Photo Added" : "Add Profile Photo to Card (Optional)"}
+                </p>
+                <p className="text-[11px] text-slate-400">
+                  {imageObj ? "Photo displays neatly inside your challenge badge" : "Card is 100% ready without photo, or add your picture"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="px-3 py-1.5 rounded-lg bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/40 text-orange-300 font-semibold cursor-pointer transition">
+                <span>{imageObj ? "Change Photo" : "+ Add Photo"}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                />
+              </label>
+              {imageObj && (
+                <button
+                  type="button"
+                  onClick={() => setImageObj(null)}
+                  className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition cursor-pointer"
+                  title="Remove Photo"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -286,6 +354,21 @@ export function DPGenerator({
               <span>Share to WhatsApp Status</span>
             </a>
           </div>
+
+          {/* Direct Link to View Full Leaderboard Rankings */}
+          <Link
+            href="/leaderboard"
+            className="w-full py-3 px-4 rounded-xl bg-slate-900 border border-slate-700 hover:border-orange-500/50 hover:bg-slate-850 text-slate-200 hover:text-white transition flex items-center justify-between text-xs sm:text-sm font-bold shadow-md group"
+          >
+            <div className="flex items-center gap-2">
+              <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>See where your {isDiaspora ? "Country" : "LGA"} ranks on the Full Leaderboard</span>
+            </div>
+            <div className="flex items-center gap-1 text-orange-400 group-hover:translate-x-1 transition duration-200">
+              <span className="text-xs">View Stats</span>
+              <ArrowRight className="w-4 h-4" />
+            </div>
+          </Link>
         </div>
       )}
 

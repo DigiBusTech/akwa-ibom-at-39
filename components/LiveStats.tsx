@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Trophy, Users, Globe, MapPin, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { Trophy, Users, Globe, MapPin, Sparkles, ArrowRight } from "lucide-react";
 import type { CampaignStats } from "@/app/actions/stats";
 import { fetchCampaignStats } from "@/app/actions/stats";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
@@ -178,6 +179,20 @@ export function TopRegionsLeaderboard({ initialStats }: LiveStatsProps) {
           })}
         </div>
       )}
+
+      {/* Button to View Full Leaderboard Page */}
+      <div className="pt-3 mt-3 border-t border-slate-800/60 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+        <span className="text-[11px] text-slate-400">
+          Home page displays top 3. View the complete table with full stats &amp; analysis:
+        </span>
+        <Link
+          href="/leaderboard"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-orange-400 hover:text-orange-300 transition py-1.5 px-3.5 rounded-xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 shrink-0 group"
+        >
+          <span>View Full Leaderboard Rankings</span>
+          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition" />
+        </Link>
+      </div>
     </div>
   );
 }

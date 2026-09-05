@@ -6,8 +6,11 @@
  *   and a catchy viral challenge message to spur mass sharing.
  */
 
+import { isDiasporaLocation, extractCountryFromDiaspora } from "@/lib/diaspora";
+
 export interface ChallengeCardRenderOptions {
   canvas: HTMLCanvasElement;
+  userImage?: HTMLImageElement | null;
   userName: string;
   userLga?: string;
   badgeTitle: string;
@@ -20,6 +23,7 @@ export interface ChallengeCardRenderOptions {
 export function renderChallengeCard(options: ChallengeCardRenderOptions) {
   const {
     canvas,
+    userImage = null,
     userName,
     userLga = "Akwa Ibom",
     badgeTitle,
@@ -144,12 +148,24 @@ export function renderChallengeCard(options: ChallengeCardRenderOptions) {
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.roundRect(pillX, pillY, pillW, pillH, 20);
-  // 6. The Great 31 LGA Heritage Battle Ribbon
+  // 6. The Great 31 LGA / Diaspora Heritage Battle Ribbon
   ctx.save();
   const battleRibbonY = 125;
   const ribbonW = 960;
   const ribbonH = 82;
   const ribbonX = (W - ribbonW) / 2;
+
+  const isDiaspora = isDiasporaLocation(userLga);
+  let ribbonTitle = "⚔️ THE 31 LGA HERITAGE SHOWDOWN ⚔️";
+  let lgaDisplay = (userLga || "AKWA IBOM STATE").trim().toUpperCase();
+
+  if (isDiaspora) {
+    const { country, flag } = extractCountryFromDiaspora(userLga);
+    ribbonTitle = `⚔️ THE GLOBAL DIASPORA HERITAGE SHOWDOWN ⚔️`;
+    lgaDisplay = `${flag} ${country.toUpperCase()} DIASPORA`;
+  } else if (!lgaDisplay.endsWith("LGA") && !lgaDisplay.includes("STATE")) {
+    lgaDisplay = `${lgaDisplay} LGA`;
+  }
 
   ctx.fillStyle = "rgba(0, 122, 51, 0.25)";
   ctx.strokeStyle = "rgba(0, 209, 84, 0.4)";
@@ -162,16 +178,15 @@ export function renderChallengeCard(options: ChallengeCardRenderOptions) {
   ctx.fillStyle = "#FFD700";
   ctx.font = "900 13px 'Inter', system-ui, -apple-system, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("⚔️ THE 31 LGA & DIASPORA HERITAGE SHOWDOWN ⚔️", W / 2, battleRibbonY + 26);
+  ctx.fillText(ribbonTitle, W / 2, battleRibbonY + 26);
 
-  const lgaDisplay = (userLga || "AKWA IBOM STATE").trim().toUpperCase();
   ctx.fillStyle = "#FFFFFF";
   ctx.font = "800 22px 'Inter', system-ui, -apple-system, sans-serif";
   ctx.textAlign = "center";
   ctx.fillText(`PROUDLY REPRESENTING:  ${lgaDisplay}`, W / 2, battleRibbonY + 60);
   ctx.restore();
 
-  // 7. Central Candidate Showcase & Badge Emblem
+  // 7. Central Candidate Showcase & Badge Emblem / Profile Picture
   const centerCX = 540;
   const emblemCY = 330;
   const emblemRadius = 88;
@@ -197,8 +212,47 @@ export function renderChallengeCard(options: ChallengeCardRenderOptions) {
   ctx.fill();
   ctx.restore();
 
-  // Draw Emblem Icon
-  drawEmblemIcon(ctx, centerCX, emblemCY, badgeTitle);
+  if (userImage) {
+    // Render Candidate Profile Photo clipped inside the circle
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(centerCX, emblemCY, emblemRadius - 10, 0, Math.PI * 2);
+    ctx.clip();
+
+    const imgW = userImage.naturalWidth || userImage.width || 1;
+    const imgH = userImage.naturalHeight || userImage.height || 1;
+    const diameter = (emblemRadius - 10) * 2;
+    const scale = Math.max(diameter / imgW, diameter / imgH);
+    const drawW = imgW * scale;
+    const drawH = imgH * scale;
+    const drawX = centerCX - drawW / 2;
+    const drawY = emblemCY - drawH / 2;
+
+    ctx.drawImage(userImage, drawX, drawY, drawW, drawH);
+    ctx.restore();
+
+    // Commemorative golden star badge overlapping the lower border
+    ctx.save();
+    ctx.fillStyle = "#FFD700";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.arc(centerCX, emblemCY + emblemRadius - 8, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#051A10";
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    ctx.fillStyle = "#051A10";
+    ctx.font = "900 13px 'Inter', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("★", centerCX, emblemCY + emblemRadius - 7);
+    ctx.restore();
+  } else {
+    // Draw crisp vector emblem icon
+    drawEmblemIcon(ctx, centerCX, emblemCY, badgeTitle);
+  }
 
   // 8. Candidate Full Name
   ctx.save();
@@ -300,7 +354,10 @@ export function renderChallengeCard(options: ChallengeCardRenderOptions) {
   ctx.fillStyle = "#FF6600";
   ctx.font = "900 24px 'Inter', system-ui, -apple-system, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("🥊 CAN YOUR LGA BEAT MY SCORE? 🥊", centerCX, chalY + 44);
+  const challengeTitle = isDiaspora
+    ? "🥊 CAN YOUR COUNTRY BEAT MY SCORE? 🥊"
+    : "🥊 CAN YOUR LGA BEAT MY SCORE? 🥊";
+  ctx.fillText(challengeTitle, centerCX, chalY + 44);
 
   ctx.fillStyle = "#FFFFFF";
   ctx.font = "700 21px 'Inter', system-ui, -apple-system, sans-serif";
@@ -312,16 +369,22 @@ export function renderChallengeCard(options: ChallengeCardRenderOptions) {
 
   ctx.fillStyle = "#A7F3D0";
   ctx.font = "600 17px 'Inter', system-ui, -apple-system, sans-serif";
+  const challengeRule = isDiaspora
+    ? "Top Diaspora Chapters & Home LGAs with highest score & participation win on Sept 23rd."
+    : "Top 3 LGAs with highest score & participation will be celebrated on Sept 23rd Statehood Day.";
   ctx.fillText(
-    "Top 3 LGAs with highest score & participation will be celebrated on Sept 23rd Statehood Day.",
+    challengeRule,
     centerCX,
     chalY + 118
   );
 
   ctx.fillStyle = "#FFD700";
   ctx.font = "800 18px 'Inter', system-ui, -apple-system, sans-serif";
+  const challengeCta = isDiaspora
+    ? "👉 Defend your residence country in the Akwa Ibom @ 39 Challenge!"
+    : "👉 Take the 3-minute quiz now & defend your LGA standing!";
   ctx.fillText(
-    "👉 Take the 3-minute quiz now: akwaibom39.ng/quiz",
+    challengeCta,
     centerCX,
     chalY + 150
   );
@@ -341,12 +404,18 @@ export function renderChallengeCard(options: ChallengeCardRenderOptions) {
   ctx.fillStyle = "#FF8533";
   ctx.font = "800 18px 'Inter', system-ui, -apple-system, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText("#AkwaIbomAt39   #AriseAgenda   #31LGAShowdown   #September23rdJubilee", centerCX, footerY + 36);
+  ctx.fillText(
+    isDiaspora
+      ? "#AkwaIbomAt39   #AriseAgenda   #DiasporaShowdown   #September23rdJubilee"
+      : "#AkwaIbomAt39   #AriseAgenda   #31LGAShowdown   #September23rdJubilee",
+    centerCX,
+    footerY + 36
+  );
 
   ctx.fillStyle = "#94A3B8";
   ctx.font = "500 14px 'Inter', system-ui, -apple-system, sans-serif";
   ctx.fillText(
-    "Official Statehood Trivia & Civic Engagement Platform • Verification: akwaibom39.ng",
+    "Official Statehood Trivia & Civic Engagement Platform • Akwa Ibom @ 39",
     centerCX,
     footerY + 66
   );
@@ -354,7 +423,7 @@ export function renderChallengeCard(options: ChallengeCardRenderOptions) {
   ctx.fillStyle = "#64748B";
   ctx.font = "500 12px 'Inter', system-ui, -apple-system, sans-serif";
   ctx.fillText(
-    "Powered by Sabi AI Technologies Ltd (www.sabiaitech.com) • Founder: Uyouko Nathaniel Ekpo",
+    "Powered by Sabi AI Technologies Ltd • Founder: Uyouko Nathaniel Ekpo",
     centerCX,
     footerY + 92
   );
