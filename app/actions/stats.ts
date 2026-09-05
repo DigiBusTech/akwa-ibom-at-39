@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createClient, isSupabaseConfigured } from "@/lib/supabase/server";
 
 export interface TopRegion {
   name: string;
@@ -16,24 +16,31 @@ export interface CampaignStats {
   averageScorePct: number;
 }
 
-// Commemorative baseline values to ensure screenshot-ready presentation
-const BASELINE_PARTICIPANTS = 4850;
-const BASELINE_TOP_REGIONS: TopRegion[] = [
-  { name: "Uyo LGA", count: 1420, type: "home" },
-  { name: "Eket LGA", count: 980, type: "home" },
-  { name: "United States (Houston / Atlanta)", count: 750, type: "diaspora" },
-];
+// Commemorative baseline values to ensure instant rendering when database has 0 rows or is syncing
+const BASELINE_PARTICIPANTS = 0;
+const BASELINE_TOP_REGIONS: TopRegion[] = [];
 
 export async function fetchCampaignStats(): Promise<CampaignStats> {
+  // 1. Guard against placeholder / unconfigured credentials to prevent hanging DNS timeouts
+  if (!isSupabaseConfigured()) {
+    return {
+      totalParticipants: BASELINE_PARTICIPANTS,
+      topRegions: BASELINE_TOP_REGIONS,
+      homeCount: 0,
+      diasporaCount: 0,
+      averageScorePct: 0,
+    };
+  }
+
   try {
     const supabase = await createClient();
 
-    // 1. Fetch live count of quiz submissions
+    // 2. Fetch live count of quiz submissions
     const { count: rawCount, error: countErr } = await supabase
       .from("quiz_submissions")
       .select("*", { count: "exact", head: true });
 
-    // 2. Fetch rows with LGA and score to compute group-by & averages
+    // 3. Fetch rows with LGA and score to compute group-by & averages
     const { data: rows, error: rowsErr } = await supabase
       .from("quiz_submissions")
       .select("lga, score, total_questions")

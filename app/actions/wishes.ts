@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { sanitizeUserName, sanitizeLga } from "@/lib/quiz-utils";
 import { checkRateLimit } from "@/lib/ratelimit";
 import type { BirthdayWish } from "@/types/database";
@@ -68,20 +68,8 @@ const FALLBACK_WISHES: BirthdayWish[] = [
 // In-memory submissions cache for local dev / offline mode
 const localWishesStore: BirthdayWish[] = [...FALLBACK_WISHES];
 
-function isPlaceholderConfig(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-  return (
-    !url ||
-    !key ||
-    url.includes("placeholder") ||
-    key.includes("placeholder") ||
-    url.includes("your-project")
-  );
-}
-
 export async function fetchBirthdayWishes(): Promise<BirthdayWish[]> {
-  if (!isPlaceholderConfig()) {
+  if (isSupabaseConfigured()) {
     try {
       const supabase = await createClient();
       const { data, error } = await supabase
@@ -139,9 +127,9 @@ export async function submitBirthdayWish(payload: SubmitWishPayload): Promise<{ 
     created_at: new Date().toISOString(),
   };
 
-  if (!isPlaceholderConfig()) {
+  if (isSupabaseConfigured()) {
     try {
-      const supabase = await createClient();
+      const supabase = createAdminClient();
       const { error } = await supabase.from("birthday_wishes").insert({
         author_name: sanitizedAuthor,
         lga: sanitizedLocation,
@@ -150,7 +138,10 @@ export async function submitBirthdayWish(payload: SubmitWishPayload): Promise<{ 
       });
 
       if (!error) {
-        revalidatePath("/");
+        localWishesStore.unshift(newWish);
+        try {
+          revalidatePath("/");
+        } catch {}
         return { success: true, message: "Your birthday wish has been published!" };
       }
     } catch (err) {
@@ -160,14 +151,16 @@ export async function submitBirthdayWish(payload: SubmitWishPayload): Promise<{ 
 
   // Prepend to local memory store
   localWishesStore.unshift(newWish);
-  revalidatePath("/");
+  try {
+    revalidatePath("/");
+  } catch {}
   return { success: true, message: "Your birthday wish has been published!" };
 }
 
 export async function fetchAllWishesForAdmin(): Promise<BirthdayWish[]> {
-  if (!isPlaceholderConfig()) {
+  if (isSupabaseConfigured()) {
     try {
-      const supabase = await createClient();
+      const supabase = createAdminClient();
       const { data, error } = await supabase
         .from("birthday_wishes")
         .select("*")
@@ -194,9 +187,9 @@ export async function toggleWishApproval(wishId: string, currentStatus: boolean)
     item.is_approved = newStatus;
   }
 
-  if (!isPlaceholderConfig()) {
+  if (isSupabaseConfigured()) {
     try {
-      const supabase = await createClient();
+      const supabase = createAdminClient();
       await supabase
         .from("birthday_wishes")
         .update({ is_approved: newStatus })
@@ -206,8 +199,10 @@ export async function toggleWishApproval(wishId: string, currentStatus: boolean)
     }
   }
 
-  revalidatePath("/");
-  revalidatePath("/admin");
+  try {
+    revalidatePath("/");
+    revalidatePath("/admin");
+  } catch {}
   return newStatus;
 }
 

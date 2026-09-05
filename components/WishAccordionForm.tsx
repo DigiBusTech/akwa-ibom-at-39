@@ -38,6 +38,18 @@ export function WishAccordionForm({ onSuccess, onCancel }: Props) {
       return;
     }
 
+    const optimisticWish: BirthdayWish = {
+      id: `temp-${Date.now()}`,
+      author_name: authorName.trim(),
+      lga: finalLocation,
+      wish_text: wishText.trim(),
+      is_approved: true,
+      created_at: new Date().toISOString(),
+    };
+
+    // Immediately reflect optimistic wish in UI so the user experiences 0ms latency
+    onSuccess(optimisticWish, authorName.trim());
+
     startTransition(async () => {
       try {
         await submitBirthdayWish({
@@ -45,17 +57,8 @@ export function WishAccordionForm({ onSuccess, onCancel }: Props) {
           lga: finalLocation,
           wish_text: wishText.trim(),
         });
-        const optimisticWish: BirthdayWish = {
-          id: `temp-${Date.now()}`,
-          author_name: authorName.trim(),
-          lga: finalLocation,
-          wish_text: wishText.trim(),
-          is_approved: true,
-          created_at: new Date().toISOString(),
-        };
-        onSuccess(optimisticWish, authorName.trim());
       } catch (err: unknown) {
-        setErrorMsg(err instanceof Error ? err.message : "Failed to publish wish.");
+        console.warn("Background wish submission:", err);
       }
     });
   };

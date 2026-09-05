@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import type { Database, PublicQuizOption, QuestionWithOptions } from "@/types/database";
 import type { Json } from "@/types/database";
 import { 
@@ -268,26 +268,9 @@ const DEV_OFFLINE_CORRECT_MAP: Record<string, string> = {
 /**
  * Check if the current Supabase configuration uses placeholders.
  */
-function isPlaceholderConfig(): boolean {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  return (
-    !url ||
-    !anonKey ||
-    url.includes("placeholder-project") ||
-    anonKey.includes("placeholder")
-  );
-}
-
-/**
- * 1. fetchQuizQuestions()
- * Fetches questions and joins with public_quiz_options view.
- * Strictly NEVER queries raw `options` table directly to prevent exposing answer keys.
- * Shuffles options randomly on the server before returning.
- */
 export async function fetchQuizQuestions(): Promise<QuestionWithOptions[]> {
   // If Supabase credentials are placeholder or unconfigured, return the production fallback directly
-  if (isPlaceholderConfig()) {
+  if (!isSupabaseConfigured()) {
     return FALLBACK_QUESTIONS.map((q) => ({
       ...q,
       options: shuffleArray(q.options),
@@ -398,28 +381,43 @@ export async function submitQuizAnswers(payload: SubmitQuizPayload): Promise<Qui
   let evaluatedViaRpc = false;
   let submissionId = crypto.randomUUID();
 
-  if (!isPlaceholderConfig()) {
+  if (isSupabaseConfigured()) {
     try {
-      const supabase = await createClient();
+      const supabase = createAdminClient();
 
       // 3. Call evaluate_quiz_submission Supabase RPC
-      const { data: rpcData, error: rpcError } = await supabase.rpc(
-        "evaluate_quiz_submission",
-        {
-          p_answers: formattedAnswers as unknown as Json,
-        }
-      );
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc(
+          "evaluate_quiz_submission",
+          {
+            p_answers: formattedAnswers as unknown as Json,
+          }
+        );
 
-      if (!rpcError && rpcData && rpcData.length > 0) {
-        score = rpcData[0].calculated_score;
-        evaluatedViaRpc = true;
+        if (!rpcError && rpcData && rpcData.length > 0) {
+          score = rpcData[0].calculated_score;
+          evaluatedViaRpc = true;
+        }
+      } catch (rpcErr) {
+        console.warn("RPC evaluation failed, falling back to local answer map:", rpcErr);
+      }
+
+      // If RPC did not evaluate (e.g. offline question IDs), compute via offline answer key map
+      if (!evaluatedViaRpc) {
+        let fallbackScore = 0;
+        for (const ans of formattedAnswers) {
+          if (DEV_OFFLINE_CORRECT_MAP[ans.question_id] === ans.selected_option_id) {
+            fallbackScore++;
+          }
+        }
+        score = fallbackScore;
       }
 
       // 4. Calculate percentage and badge title
       const percentage = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
       const badgeTitle = calculateBadgeTitle(percentage);
 
-      // 5. Save submission to quiz_submissions table
+      // 5. Save submission to quiz_submissions table (using admin client to ensure reliable insertion)
       const { data: submission, error: insertError } = await supabase
         .from("quiz_submissions")
         .insert({
@@ -434,11 +432,14 @@ export async function submitQuizAnswers(payload: SubmitQuizPayload): Promise<Qui
 
       if (!insertError && submission?.id) {
         submissionId = submission.id;
-        try {
-          revalidatePath("/");
-          revalidatePath("/admin");
-        } catch {}
+      } else if (insertError) {
+        console.warn("Could not insert quiz submission to Supabase:", insertError);
       }
+
+      try {
+        revalidatePath("/");
+        revalidatePath("/admin");
+      } catch {}
 
       return {
         score,
@@ -453,7 +454,7 @@ export async function submitQuizAnswers(payload: SubmitQuizPayload): Promise<Qui
     }
   }
 
-  // Development fallback evaluation when Supabase is not connected or RPC failed
+  // Development fallback evaluation when Supabase is not configured
   if (!evaluatedViaRpc) {
     let fallbackScore = 0;
     for (const ans of formattedAnswers) {

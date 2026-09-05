@@ -149,7 +149,10 @@ export function BirthdayTicker({ initialWishes = [] }: BirthdayTickerProps) {
       {/* Dual-Track Seamless Infinite Marquee */}
       <div className="relative py-3 overflow-hidden select-none flex group">
         {/* Track 1 */}
-        <div className="flex shrink-0 animate-marquee group-hover:[animation-play-state:paused] items-center gap-6 pr-6">
+        <div
+          className="flex shrink-0 animate-marquee group-hover:[animation-play-state:paused] items-center gap-6 pr-6"
+          style={{ animationDuration: "140s" }}
+        >
           {trackItems.map((w, idx) => (
             <WishPill key={`t1-${w.id}-${idx}`} wish={w} />
           ))}
@@ -158,6 +161,7 @@ export function BirthdayTicker({ initialWishes = [] }: BirthdayTickerProps) {
         <div
           className="flex shrink-0 animate-marquee group-hover:[animation-play-state:paused] items-center gap-6 pr-6"
           aria-hidden="true"
+          style={{ animationDuration: "140s" }}
         >
           {trackItems.map((w, idx) => (
             <WishPill key={`t2-${w.id}-${idx}`} wish={w} />

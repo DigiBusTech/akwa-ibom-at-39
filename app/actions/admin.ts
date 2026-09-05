@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, isSupabaseConfigured } from "@/lib/supabase/server";
 import { fetchAllWishesForAdmin } from "./wishes";
 import type { BirthdayWish } from "@/types/database";
 
@@ -13,24 +13,25 @@ export interface AdminAnalyticsData {
   recentWishes: BirthdayWish[];
 }
 
-const DEFAULT_LOCATIONS = [
-  { name: "Uyo LGA", count: 1840, category: "Home" },
-  { name: "Ikot Ekpene LGA", count: 1220, category: "Home" },
-  { name: "Eket LGA", count: 1090, category: "Home" },
-  { name: "Houston, USA", count: 850, category: "Diaspora" },
-  { name: "London, UK", count: 710, category: "Diaspora" },
-  { name: "Oron LGA", count: 640, category: "Home" },
-  { name: "Toronto, Canada", count: 520, category: "Diaspora" },
-  { name: "Cotonou, Benin Republic", count: 480, category: "Diaspora" },
-  { name: "Abak LGA", count: 410, category: "Home" },
-  { name: "Atlanta, USA", count: 390, category: "Diaspora" },
-];
-
 export async function fetchAdminDashboardData(): Promise<AdminAnalyticsData> {
   const recentWishes = await fetchAllWishesForAdmin();
 
+  if (!isSupabaseConfigured()) {
+    return {
+      totalParticipants: 0,
+      averageScorePercentage: 0,
+      averageScorePoints: 0,
+      homeVsDiaspora: [
+        { name: "Home (31 LGAs)", value: 0, color: "#007A33" },
+        { name: "Diaspora Network", value: 0, color: "#FF6600" },
+      ],
+      top10Locations: [],
+      recentWishes,
+    };
+  }
+
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     // Query submissions
     const { data: rows, count: totalCount, error } = await supabase

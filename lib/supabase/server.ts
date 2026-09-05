@@ -3,6 +3,29 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { Database } from "@/types/database";
 
+/**
+ * Check if valid, live Supabase credentials are configured in the server environment.
+ * Prevents phantom HTTP connection attempts to placeholder URLs.
+ */
+export function isSupabaseConfigured(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!url || !anonKey) return false;
+  if (
+    url.includes("placeholder") ||
+    url.includes("your-project") ||
+    anonKey.includes("placeholder")
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Standard Supabase client using anon key and active cookies.
+ * Enforces a strict 5-second fetch timeout to prevent hanging server requests.
+ */
 export async function createClient(): Promise<SupabaseClient<Database>> {
   let cookieStore: Awaited<ReturnType<typeof cookies>> | null = null;
   try {
@@ -18,6 +41,14 @@ export async function createClient(): Promise<SupabaseClient<Database>> {
     supabaseUrl,
     supabaseAnonKey,
     {
+      global: {
+        fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+          return fetch(input, {
+            ...init,
+            signal: init?.signal || AbortSignal.timeout(5000),
+          });
+        },
+      },
       cookies: {
         get(name: string) {
           return cookieStore?.get(name)?.value;
@@ -44,24 +75,28 @@ export async function createClient(): Promise<SupabaseClient<Database>> {
 /**
  * Privileged Service Role Supabase Client
  * Use ONLY in secure server contexts (Server Actions / Route Handlers)
- * Never expose to client bundles.
+ * Never expose to client bundles. Enforces strict 5-second timeout.
  */
 export function createAdminClient(): SupabaseClient<Database> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder-project.supabase.co";
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!serviceRoleKey || serviceRoleKey === "placeholder-service-role-key") {
-    if (process.env.NODE_ENV === "development") {
-      console.warn(
-        "⚠️ SUPABASE_SERVICE_ROLE_KEY is not set. Privileged administrative database operations will not succeed."
-      );
-    }
-  }
+  const keyToUse = serviceRoleKey && !serviceRoleKey.includes("placeholder")
+    ? serviceRoleKey
+    : process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-anon-key";
 
   return createServerClient<Database>(
     supabaseUrl,
-    serviceRoleKey || "placeholder-service-role-key",
+    keyToUse,
     {
+      global: {
+        fetch: (input: RequestInfo | URL, init?: RequestInit) => {
+          return fetch(input, {
+            ...init,
+            signal: init?.signal || AbortSignal.timeout(5000),
+          });
+        },
+      },
       cookies: {
         get() {
           return undefined;
@@ -72,4 +107,5 @@ export function createAdminClient(): SupabaseClient<Database> {
     }
   ) as unknown as SupabaseClient<Database>;
 }
+
 
