@@ -11,7 +11,8 @@ import {
   User, 
   Crown,
   Flame,
-  Camera
+  Camera,
+  Trophy
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { DPGenerator } from "@/components/DPGenerator";
@@ -41,11 +42,11 @@ export async function generateMetadata({ params, searchParams }: ResultPageProps
   const ogUrl = `/api/og?name=${encodeURIComponent(name)}&badge=${encodeURIComponent(badge)}&score=${score}&total=${total}&percentage=${percentage}&lga=${encodeURIComponent(lga)}`;
 
   return {
-    title: `${name}'s Akwa Ibom @ 39 Scorecard - ${badge}`,
-    description: `${name} earned the ${badge} badge (${score}/${total}) on the Akwa Ibom @ 39 Anniversary Trivia!`,
+    title: `${name} scored ${score}/${total} (${percentage}%) representing ${lga} | Akwa Ibom @ 39`,
+    description: `🥊 Can your LGA beat ${name}'s ${percentage}% score? Take the Akwa Ibom @ 39 Heritage Showdown & rally your LGA into the Top 3 before Sept 23rd!`,
     openGraph: {
-      title: `${name}'s Akwa Ibom @ 39 Anniversary Scorecard`,
-      description: `Official Commemorative Scorecard & DP: ${badge} (${percentage}%)`,
+      title: `${name}'s Akwa Ibom @ 39 Challenge Scorecard (${score}/${total})`,
+      description: `Representing ${lga} with ${percentage}% accuracy! Top 3 LGAs will be celebrated on Sept 23rd Statehood Day.`,
       images: [
         {
           url: ogUrl,
@@ -57,8 +58,8 @@ export async function generateMetadata({ params, searchParams }: ResultPageProps
     },
     twitter: {
       card: "summary_large_image",
-      title: `${name} is an Akwa Ibom ${badge}!`,
-      description: `Celebrate Akwa Ibom @ 39: Test your roots and generate your personalized DP.`,
+      title: `${name} scored ${score}/${total} representing ${lga}!`,
+      description: `Can your LGA beat ${name}'s score? Take the Akwa Ibom @ 39 Challenge before Sept 23rd!`,
       images: [ogUrl],
     },
   };
@@ -155,6 +156,31 @@ export default async function QuizResultPage({ params, searchParams }: ResultPag
           Here is your certified commemoration report for the Akwa Ibom State 39-year milestone.
         </p>
       </div>
+      {/* 18-Day Countdown & LGA Battle Alert Banner */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-orange-500/15 via-amber-500/10 to-emerald-500/15 border border-orange-500/30 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+        <div className="space-y-1">
+          <div className="flex items-center justify-center sm:justify-start gap-2">
+            <Trophy className="w-4 h-4 text-amber-400" />
+            <span className="text-xs font-black uppercase tracking-wider text-amber-400">
+              The 31 LGA &amp; Diaspora Showdown
+            </span>
+            <span className="px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 text-[10px] font-bold border border-orange-500/30">
+              18 Days to Sept 23
+            </span>
+          </div>
+          <p className="text-xs text-slate-300">
+            You scored <strong className="text-emerald-400">{score}/{total}</strong> representing <strong className="text-orange-400">{userLga || "Akwa Ibom State"}</strong>! Top 3 LGAs with highest participation &amp; score points will be honored on September 23rd Statehood Day.
+          </p>
+        </div>
+        <Link
+          href="/quiz"
+          className="shrink-0 px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-200 hover:text-white text-xs font-bold transition flex items-center gap-1.5"
+        >
+          <RotateCcw className="w-3.5 h-3.5 text-orange-400" />
+          <span>Retake Quiz</span>
+        </Link>
+      </div>
+
 
       {/* Main Result Card */}
       <div className={`glass-panel p-6 sm:p-8 rounded-3xl border ${badgeConfig.border} shadow-2xl space-y-6 relative overflow-hidden text-center`}>

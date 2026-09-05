@@ -279,14 +279,13 @@ export default function QuizPage() {
             <div className="text-center space-y-3">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-300 text-xs sm:text-sm font-semibold backdrop-blur-md">
                 <Sparkles className="w-4 h-4 text-orange-400" />
-                <span>Akwa Ibom @ 39 Anniversary Trivia</span>
+                <span>The 31 LGA Showdown • 18 Days to Sept 23</span>
               </div>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
                 Prove Your Akwa Ibom Identity
               </h1>
               <p className="text-sm sm:text-base text-slate-400 max-w-lg mx-auto">
-                Test your knowledge of our state's 39-year heritage across cuisine, leadership, 
-                geography, and culture to claim your commemorative anniversary badge.
+                Represent your LGA in the official 39th Anniversary polls! Answer 15 trivia questions, earn your instant bragging rights card, and help your LGA clinch the Top 3 podium on Sept 23rd.
               </p>
             </div>
 

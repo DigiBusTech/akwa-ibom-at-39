@@ -17,7 +17,8 @@ import {
   ExternalLink,
   Flame,
   Search,
-  Layers
+  Layers,
+  Trophy
 } from "lucide-react";
 import { fetchBirthdayWishes } from "@/app/actions/wishes";
 import { fetchCampaignStats } from "@/app/actions/stats";
@@ -112,6 +113,28 @@ export default async function Home() {
           >
             Root Connection Vision
           </a>
+        {/* The 31 LGA Heritage Battle Promo Callout */}
+        <div className="max-w-2xl mx-auto p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-orange-500/15 via-amber-500/10 to-emerald-500/15 border border-orange-500/30 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-4 mt-2">
+          <div className="space-y-1">
+            <div className="flex items-center justify-center sm:justify-start gap-2">
+              <Trophy className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="text-xs font-black uppercase tracking-wider text-amber-400">
+                The 31 LGA Showdown • 18 Days to Sept 23
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Top 3 LGAs with highest participation &amp; score points will be honored on September 23rd Statehood Day. Take the quiz, get your bragging rights card, and push your LGA to #1!
+            </p>
+          </div>
+          <Link
+            href="/quiz"
+            className="shrink-0 px-4 py-2 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold text-xs shadow-lg shadow-orange-500/20 transition flex items-center gap-1.5"
+          >
+            <span>Represent Your LGA</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
         </div>
       </div>
 
