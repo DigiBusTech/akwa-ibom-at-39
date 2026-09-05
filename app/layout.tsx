@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Outfit } from "next/font/google";
 import Link from "next/link";
+import NextTopLoader from "nextjs-toploader";
 import { AkwaIbomMap } from "@/components/AkwaIbomMap";
 import { Footer } from "@/components/Footer";
 import "./globals.css";
@@ -66,6 +67,17 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
       </head>
       <body className="font-sans antialiased selection:bg-orange-500/30 selection:text-orange-200">
+        <NextTopLoader
+          color="#FF6600"
+          initialPosition={0.12}
+          crawlSpeed={200}
+          height={3}
+          crawl={true}
+          showSpinner={true}
+          easing="ease-in-out"
+          speed={250}
+          shadow="0 0 12px #FF6600,0 0 6px #007A33"
+        />
         <header className="w-full border-b border-orange-500/15 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <Link href="/" className="flex items-center gap-3 group">
