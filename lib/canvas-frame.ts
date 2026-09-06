@@ -107,14 +107,48 @@ export function renderAnniversaryFrame(options: FrameRenderOptions) {
       const iw = userImage.naturalWidth;
       const ih = userImage.naturalHeight;
       const baseScale = Math.max(620 / iw, 540 / ih);
-      const drawW = iw * baseScale * zoom;
-      const drawH = ih * baseScale * zoom;
-      const drawX = targetCX - drawW / 2 + panX;
-      const drawY = targetCY - drawH / 2 + panY;
+      const drawW = Math.round(iw * baseScale * zoom);
+      const drawH = Math.round(ih * baseScale * zoom);
+      const drawX = Math.round(targetCX - drawW / 2 + panX);
+      const drawY = Math.round(targetCY - drawH / 2 + panY);
 
-      ctx.save();
-      ctx.drawImage(userImage, drawX, drawY, drawW, drawH);
-      ctx.restore();
+      // Create an offscreen buffer to feather the bottom edge seamlessly
+      // Prevents harsh horizontal cutoffs and blends into the orange motif
+      const portraitCanvas = document.createElement("canvas");
+      portraitCanvas.width = drawW;
+      portraitCanvas.height = drawH;
+      const pCtx = portraitCanvas.getContext("2d");
+
+      if (pCtx) {
+        // Draw user image onto offscreen buffer
+        pCtx.drawImage(userImage, 0, 0, drawW, drawH);
+
+        // Apply smooth transparency gradient mask to bottom 18-20%
+        const fadeHeight = Math.max(drawH * 0.20, 80);
+        const fadeStartY = drawH - fadeHeight;
+
+        pCtx.globalCompositeOperation = "destination-out";
+        const maskGrad = pCtx.createLinearGradient(0, fadeStartY, 0, drawH);
+        maskGrad.addColorStop(0, "rgba(0, 0, 0, 0)");       // 0% transparent (100% visible)
+        maskGrad.addColorStop(0.25, "rgba(0, 0, 0, 0.10)"); // Subtle start of feather
+        maskGrad.addColorStop(0.55, "rgba(0, 0, 0, 0.40)"); // Soft mid feather
+        maskGrad.addColorStop(0.80, "rgba(0, 0, 0, 0.75)"); // Near transparent
+        maskGrad.addColorStop(1, "rgba(0, 0, 0, 1.0)");      // 100% erased (feathered to transparent)
+
+        pCtx.fillStyle = maskGrad;
+        pCtx.fillRect(0, fadeStartY, drawW, fadeHeight);
+        pCtx.globalCompositeOperation = "source-over"; // Reset buffer composite
+
+        // Draw the feathered portrait onto the main canvas
+        ctx.save();
+        ctx.drawImage(portraitCanvas, drawX, drawY, drawW, drawH);
+        ctx.restore();
+      } else {
+        // Fallback standard draw
+        ctx.save();
+        ctx.drawImage(userImage, drawX, drawY, drawW, drawH);
+        ctx.restore();
+      }
     } else {
       // Interactive placeholder card positioned over the orange shape
       ctx.save();
@@ -150,56 +184,84 @@ export function renderAnniversaryFrame(options: FrameRenderOptions) {
       ctx.drawImage(fgImg, 0, 0, W, H);
     }
 
-    // 4. Dynamic Text on Green Nameplate
+    // 4. Dynamic Text on Orange Badge & Green Nameplate
     const cleanName = (userName || "PROUD CITIZEN").trim().toUpperCase();
+
+    // 4a. Draw "I AM" Prefix with Official Drop Shadow
+    ctx.save();
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "900 23px 'Montserrat Bold', 'Montserrat', 'Georgia', system-ui, sans-serif";
+    ctx.fillStyle = "#FFFFFF";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
+    ctx.fillText("I AM", 403, 703);
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.restore();
 
     // Determine subtitle line
     let subtitleText = "";
-    if (badgeTitle && score !== undefined && total !== undefined && total > 0) {
+    if (badgeTitle && (badgeTitle.toLowerCase().includes("none") || badgeTitle === "Official Name Only")) {
+      subtitleText = "";
+    } else if (badgeTitle && score !== undefined && total !== undefined && total > 0) {
       subtitleText = `${badgeTitle.toUpperCase()} • ${score}/${total}`;
-    } else if (userLga && userLga.trim().length > 0) {
-      subtitleText = `${(badgeTitle || "PROUD AKWA IBOMITE").toUpperCase()}, ${userLga.toUpperCase()} LGA`;
-    } else if (badgeTitle) {
+    } else if (badgeTitle && badgeTitle.trim().length > 0 && !badgeTitle.toLowerCase().includes("none") && badgeTitle !== "Proud Akwa Ibomite") {
       subtitleText = badgeTitle.toUpperCase();
+    } else if (userLga && userLga.trim().length > 0 && userLga !== "Akwa Ibom") {
+      subtitleText = `${(badgeTitle || "PROUD AKWA IBOMITE").toUpperCase()}, ${userLga.toUpperCase()} LGA`;
     }
 
-    const textX = 345;
-    const maxTextWidth = 385;
+    const textX = 355;
+    const maxTextWidth = 380;
 
     ctx.save();
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
 
-    const nameY = subtitleText ? 752 : 772;
+    const nameY = subtitleText ? 748 : 769;
     const subY = 788;
 
-    // Render User Name (Line 1, Bold White)
-    let nameSize = 30;
-    ctx.font = `900 ${nameSize}px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif`;
+    // Render User Name with Bold Serif/Sans font & Canvas Drop Shadow
+    let nameSize = subtitleText ? 30 : 34;
+    ctx.font = `700 ${nameSize}px 'Georgia', 'Merriweather', 'Montserrat Bold', 'Montserrat', serif`;
     while (ctx.measureText(cleanName).width > maxTextWidth && nameSize > 16) {
       nameSize -= 1;
-      ctx.font = `900 ${nameSize}px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif`;
+      ctx.font = `700 ${nameSize}px 'Georgia', 'Merriweather', 'Montserrat Bold', 'Montserrat', serif`;
     }
 
-    ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
-    ctx.shadowBlur = 4;
-    ctx.shadowOffsetY = 1;
+    ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetX = 2;
+    ctx.shadowOffsetY = 2;
     ctx.fillStyle = "#FFFFFF";
     ctx.fillText(cleanName, textX, nameY);
 
     // Render Subtitle / LGA / Heritage Badge (Line 2, White)
     if (subtitleText) {
-      let subSize = 18;
-      ctx.font = `700 ${subSize}px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif`;
+      let subSize = 16;
+      ctx.font = `700 ${subSize}px 'Montserrat', 'Inter', system-ui, sans-serif`;
       while (ctx.measureText(subtitleText).width > maxTextWidth && subSize > 11) {
         subSize -= 1;
-        ctx.font = `700 ${subSize}px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif`;
+        ctx.font = `700 ${subSize}px 'Montserrat', 'Inter', system-ui, sans-serif`;
       }
+      ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+      ctx.shadowBlur = 5;
+      ctx.shadowOffsetX = 1.5;
+      ctx.shadowOffsetY = 1.5;
       ctx.fillStyle = "#FFFFFF";
-      ctx.shadowBlur = 3;
       ctx.fillText(subtitleText, textX, subY);
     }
 
+    // Reset shadow properties to prevent accidental bleed
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
     ctx.restore();
 
     if (onRenderComplete) {

@@ -25,6 +25,7 @@ import { removePhotoBackground } from "@/lib/background-removal";
 import { AKWA_IBOM_LGAS } from "@/types/database";
 
 const POPULAR_BADGES = [
+  "None (Name Only - Official Clean Look)",
   "Proud Akwa Ibomite",
   "Heritage Ambassador",
   "ARISE Partner",
@@ -39,7 +40,7 @@ export function StandaloneDPGenerator() {
 
   const [userName, setUserName] = useState("");
   const [userLga, setUserLga] = useState("Uyo");
-  const [badgeTitle, setBadgeTitle] = useState("Proud Akwa Ibomite");
+  const [badgeTitle, setBadgeTitle] = useState("None (Name Only - Official Clean Look)");
   const [customBadge, setCustomBadge] = useState("");
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
