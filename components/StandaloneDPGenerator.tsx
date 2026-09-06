@@ -18,7 +18,8 @@ import {
   User,
   MapPin,
   Award,
-  Loader2
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 import { renderAnniversaryFrame, preloadOfficialFrame } from "@/lib/canvas-frame";
 import { removePhotoBackground, precompressUploadedImage } from "@/lib/background-removal";
@@ -54,8 +55,16 @@ export function StandaloneDPGenerator() {
   const [copied, setCopied] = useState(false);
   const [isRemovingBg, setIsRemovingBg] = useState(false);
   const [bgRemovalProgress, setBgRemovalProgress] = useState("");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const cancelBgRemovalRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4500);
+  }, []);
 
   useEffect(() => {
     preloadOfficialFrame().catch(() => {});
@@ -110,7 +119,7 @@ export function StandaloneDPGenerator() {
     abortControllerRef.current = abortController;
 
     setIsRemovingBg(true);
-    setBgRemovalProgress("Loading photo & preparing fast AI engine...");
+    setBgRemovalProgress("Removing background... Please wait");
 
     // Immediately load original photo so user never waits with a blank canvas
     const origUrl = URL.createObjectURL(file);
@@ -128,13 +137,12 @@ export function StandaloneDPGenerator() {
     rawImg.src = origUrl;
 
     try {
-      // 1. Client-Side Image Pre-Compression: strictly capped at max 600px, 0.7 JPEG quality
-      setBgRemovalProgress("Downscaling image resolution (max 600px)...");
-      const compressedBlob = await precompressUploadedImage(file, 600, 0.7);
+      // 1. Client-Side Image Pre-Compression: strictly capped at max 800px on hidden canvas
+      const compressedBlob = await precompressUploadedImage(file, 800, 0.85);
 
       if (cancelBgRemovalRef.current || abortController.signal.aborted) return;
 
-      // 2. Feed lightweight compressed Blob into removePhotoBackground with AbortSignal
+      // 2. Transmit to serverless /api/remove-bg route with AbortSignal
       const blob = await removePhotoBackground(
         compressedBlob,
         (msg) => {
@@ -162,9 +170,13 @@ export function StandaloneDPGenerator() {
         setBgRemovalProgress("");
       };
       cutoutImg.src = cutoutUrl;
-    } catch (err) {
-      console.warn("Auto background removal skipped or timed out, using original photo:", err);
+    } catch (err: any) {
+      console.warn("Background removal error, timed out, or rate-limited. Falling back to original photo:", err);
+      // FAIL-SAFE FALLBACK:
+      // If Hugging Face API fails, times out, or returns a 429 rate-limit error,
+      // trigger toast notification and automatically fall back to using original uploaded image
       if (!cancelBgRemovalRef.current) {
+        showToast("Server busy. Using standard portrait mode.");
         setIsRemovingBg(false);
         setBgRemovalProgress("");
         setUseCutout(false);
@@ -225,10 +237,19 @@ export function StandaloneDPGenerator() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-      {/* Left Column: Interactive Canvas Preview */}
-      <div className="w-full lg:col-span-6 space-y-4">
-        <div className="relative mx-auto w-full max-w-[340px] sm:max-w-sm rounded-3xl overflow-hidden border-2 border-emerald-500/40 shadow-2xl bg-slate-900 group">
+    <div className="relative">
+      {/* Toast Notification for Fail-Safe Fallback */}
+      {toastMessage && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs sm:text-sm shadow-2xl backdrop-blur-md flex items-center gap-2 border border-amber-300 animate-in fade-in slide-in-from-top-4 duration-200">
+          <AlertCircle className="w-4 h-4 shrink-0 text-slate-950" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Column: Interactive Canvas Preview */}
+        <div className="w-full lg:col-span-6 space-y-4">
+          <div className="relative mx-auto w-full max-w-full sm:max-w-sm rounded-3xl overflow-hidden border-2 border-emerald-500/40 shadow-2xl bg-slate-900 group">
           {/* AI Background Removal Processing Overlay */}
           {isRemovingBg && (
             <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-4 z-20 animate-in fade-in duration-200">
@@ -522,6 +543,7 @@ export function StandaloneDPGenerator() {
           </Link>
         </div>
       </div>
+    </div>
     </div>
   );
 }

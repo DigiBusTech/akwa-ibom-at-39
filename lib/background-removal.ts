@@ -1,18 +1,18 @@
 /**
- * Client-side Automatic Background Removal Utility.
- * Uses @imgly/background-removal with quantized model and pre-scaled input
- * for ultra-fast performance on mobile and desktop browsers without OOM crashes.
+ * Automatic Background Removal Utility.
+ * Powered by Hugging Face Inference API (briaai/RMBG-1.4) via serverless proxy /api/remove-bg.
+ * Pre-downscales images to max 800px on a hidden canvas before sending to keep payload light and fast.
  */
 
 /**
- * Pre-downscales large smartphone camera images (e.g. 12MP / 4000x3000) to max 600px
- * and 0.7 JPEG quality on a hidden HTML5 canvas before sending to AI inference.
- * This guarantees fast inference and prevents mobile browser out-of-memory (OOM) crashes.
+ * Pre-downscales large smartphone camera images (e.g. 12MP / 4000x3000) to max 800px
+ * and 0.85 JPEG quality on a hidden HTML5 canvas before sending to the background removal API.
+ * Keeps payload size under 150KB for rapid network transport and minimal latency.
  */
 export async function precompressUploadedImage(
   file: File | Blob,
-  maxDimension = 600,
-  quality = 0.7
+  maxDimension = 800,
+  quality = 0.85
 ): Promise<Blob> {
   return new Promise((resolve) => {
     if (typeof window === "undefined") {
@@ -27,11 +27,11 @@ export async function precompressUploadedImage(
       URL.revokeObjectURL(url);
       let { naturalWidth: width, naturalHeight: height } = img;
       if (!width || !height) {
-        width = img.width || 600;
-        height = img.height || 600;
+        width = img.width || 800;
+        height = img.height || 800;
       }
 
-      // Constrain strictly to max 600px dimension
+      // Constrain strictly to maxDimension (800px)
       if (width > maxDimension || height > maxDimension) {
         if (width > height) {
           height = Math.round((height * maxDimension) / width);
@@ -71,6 +71,10 @@ export async function precompressUploadedImage(
   });
 }
 
+/**
+ * Calls the serverless /api/remove-bg endpoint (powered by Hugging Face RMBG-1.4).
+ * Throws on failure, timeout, or 429 rate limit so the UI can gracefully fallback.
+ */
 export async function removePhotoBackground(
   file: File | Blob,
   onProgress?: (status: string) => void,
@@ -84,53 +88,44 @@ export async function removePhotoBackground(
     throw new Error("Aborted");
   }
 
-  // Yield to UI thread so spinner animates smoothly at 60fps
-  await new Promise((resolve) => setTimeout(resolve, 50));
-  if (signal?.aborted) throw new Error("Aborted");
+  onProgress?.("Removing background... Please wait");
 
-  onProgress?.("Compressing image for fast AI processing...");
-  const optimizedInput = await precompressUploadedImage(file, 600, 0.7);
+  // 1. Pre-compress to max 800px on hidden canvas
+  const compressedBlob = await precompressUploadedImage(file, 800, 0.85);
 
-  if (signal?.aborted) throw new Error("Aborted");
-  await new Promise((resolve) => setTimeout(resolve, 30));
-
-  onProgress?.("Initializing AI background cutout engine...");
-
-  // Dynamically import ESM from CDN via runtime evaluator to bypass webpack bundling
-  const dynamicImport = new Function("specifier", "return import(specifier)");
-  const bgModule: any = await dynamicImport(
-    "https://esm.sh/@imgly/background-removal@1.7.0"
-  );
-
-  if (signal?.aborted) throw new Error("Aborted");
-
-  const removeBackgroundFn = bgModule.removeBackground || bgModule.default;
-  if (typeof removeBackgroundFn !== "function") {
-    throw new Error("removeBackground function not found in loaded module");
+  if (signal?.aborted) {
+    throw new Error("Aborted");
   }
 
-  onProgress?.("Removing background... Please wait");
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  // 2. Transmit to serverless /api/remove-bg route
+  const formData = new FormData();
+  formData.append("image", compressedBlob, "portrait.jpg");
 
-  const blob: Blob = await removeBackgroundFn(optimizedInput, {
-    model: "isnet_quint8", // Quantized model: 4x smaller download & 3x faster inference
-    rescale: true,
-    progress: (key: string, current: number, total: number) => {
-      if (signal?.aborted) return;
-      if (key.includes("fetch")) {
-        const pct = Math.min(99, Math.round((current / (total || 1)) * 100));
-        onProgress?.(`Loading Fast AI Engine (${pct}%)...`);
-      } else if (key.includes("compute")) {
-        onProgress?.("Extracting portrait cutout...");
-      } else {
-        onProgress?.("Removing background... Please wait");
-      }
-    },
+  const response = await fetch("/api/remove-bg", {
+    method: "POST",
+    body: formData,
+    signal,
   });
 
-  if (signal?.aborted) throw new Error("Aborted");
+  if (!response.ok) {
+    let errorDetail = "";
+    try {
+      const errJson = await response.json();
+      errorDetail = errJson.error || response.statusText;
+    } catch {
+      errorDetail = response.statusText;
+    }
 
-  return blob;
+    const error: any = new Error(
+      errorDetail || `Background removal failed with status ${response.status}`
+    );
+    error.status = response.status;
+    throw error;
+  }
+
+  const resultBlob = await response.blob();
+  return resultBlob;
 }
+
 
 

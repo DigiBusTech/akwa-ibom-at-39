@@ -127,17 +127,17 @@ export function renderAnniversaryFrame(options: FrameRenderOptions) {
         pCtx.drawImage(userImage, 0, 0, drawW, drawH);
 
         // A. Photo-relative bottom feather:
-        // Ensures that any cropped waist/chest/arm crop never shows an abrupt horizontal cutoff
-        const photoFadeHeight = Math.max(Math.min(drawH * 0.28, 140), 60);
+        // Apply a transparent linear gradient mask (destination-out) to bottom 18% of user's image
+        // so the lower edge smoothly fades/feathers into the orange background pattern
+        const photoFadeHeight = Math.max(Math.round(drawH * 0.18), 50);
         const photoFadeStart = drawH - photoFadeHeight;
 
         pCtx.globalCompositeOperation = "destination-out";
         const photoGrad = pCtx.createLinearGradient(0, photoFadeStart, 0, drawH);
         photoGrad.addColorStop(0.00, "rgba(0, 0, 0, 0)");
-        photoGrad.addColorStop(0.25, "rgba(0, 0, 0, 0.10)");
-        photoGrad.addColorStop(0.50, "rgba(0, 0, 0, 0.35)");
-        photoGrad.addColorStop(0.75, "rgba(0, 0, 0, 0.70)");
-        photoGrad.addColorStop(0.92, "rgba(0, 0, 0, 0.92)");
+        photoGrad.addColorStop(0.25, "rgba(0, 0, 0, 0.15)");
+        photoGrad.addColorStop(0.50, "rgba(0, 0, 0, 0.45)");
+        photoGrad.addColorStop(0.75, "rgba(0, 0, 0, 0.75)");
         photoGrad.addColorStop(1.00, "rgba(0, 0, 0, 1.0)");
 
         pCtx.fillStyle = photoGrad;
@@ -269,12 +269,12 @@ export function renderAnniversaryFrame(options: FrameRenderOptions) {
     const nameY = subtitleText ? 748 : 769;
     const subY = 788;
 
-    // Render User Name with Bold Serif/Sans font & Canvas Drop Shadow
+    // Render User Name with clean bold font & canvas drop shadows
     let nameSize = subtitleText ? 30 : 34;
-    ctx.font = `700 ${nameSize}px 'Georgia', 'Merriweather', 'Montserrat Bold', 'Montserrat', serif`;
+    ctx.font = `bold ${nameSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
     while (ctx.measureText(cleanName).width > maxTextWidth && nameSize > 16) {
       nameSize -= 1;
-      ctx.font = `700 ${nameSize}px 'Georgia', 'Merriweather', 'Montserrat Bold', 'Montserrat', serif`;
+      ctx.font = `bold ${nameSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
     }
 
     ctx.shadowColor = "rgba(0, 0, 0, 0.6)";

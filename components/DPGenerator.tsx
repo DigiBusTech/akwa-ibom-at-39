@@ -22,7 +22,8 @@ import {
   X,
   Globe,
   ArrowRight,
-  Loader2
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 import { renderAnniversaryFrame, preloadOfficialFrame } from "@/lib/canvas-frame";
 import { removePhotoBackground, precompressUploadedImage } from "@/lib/background-removal";
@@ -71,8 +72,16 @@ export function DPGenerator({
   const [socialModal, setSocialModal] = useState<"instagram" | "tiktok" | null>(null);
   const [isRemovingBg, setIsRemovingBg] = useState(false);
   const [bgRemovalProgress, setBgRemovalProgress] = useState("");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const cancelBgRemovalRef = useRef(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 4500);
+  }, []);
 
   // Redraw Challenge Card Canvas
   const redrawChallenge = useCallback(() => {
@@ -157,7 +166,7 @@ export function DPGenerator({
     abortControllerRef.current = abortController;
 
     setIsRemovingBg(true);
-    setBgRemovalProgress("Loading photo & preparing fast AI engine...");
+    setBgRemovalProgress("Removing background... Please wait");
 
     // Immediately load original photo so user never waits with an empty canvas
     const origUrl = URL.createObjectURL(file);
@@ -175,13 +184,12 @@ export function DPGenerator({
     rawImg.src = origUrl;
 
     try {
-      // 1. Client-Side Image Pre-Compression: strictly capped at max 600px, 0.7 JPEG quality
-      setBgRemovalProgress("Downscaling image resolution (max 600px)...");
-      const compressedBlob = await precompressUploadedImage(file, 600, 0.7);
+      // 1. Client-Side Image Pre-Compression: strictly capped at max 800px on hidden canvas
+      const compressedBlob = await precompressUploadedImage(file, 800, 0.85);
 
       if (cancelBgRemovalRef.current || abortController.signal.aborted) return;
 
-      // 2. Feed lightweight compressed Blob into removePhotoBackground with AbortSignal
+      // 2. Fetch call to /api/remove-bg with fallback handling
       const blob = await removePhotoBackground(
         compressedBlob,
         (msg) => {
@@ -209,9 +217,13 @@ export function DPGenerator({
         setBgRemovalProgress("");
       };
       cutoutImg.src = cutoutUrl;
-    } catch (err) {
-      console.warn("Auto background removal skipped or timed out, using original photo:", err);
+    } catch (err: any) {
+      console.warn("Background removal error, timed out, or rate-limited. Falling back to original photo:", err);
+      // FAIL-SAFE FALLBACK:
+      // If Hugging Face API fails, times out, or returns a 429 rate-limit error,
+      // trigger toast notification and automatically fall back to using original uploaded image
       if (!cancelBgRemovalRef.current) {
+        showToast("Server busy. Using standard portrait mode.");
         setIsRemovingBg(false);
         setBgRemovalProgress("");
         setUseCutout(false);
@@ -310,7 +322,15 @@ export function DPGenerator({
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-6 relative">
+      {/* Toast Notification for Fail-Safe Fallback */}
+      {toastMessage && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl bg-amber-500 text-slate-950 font-bold text-xs sm:text-sm shadow-2xl backdrop-blur-md flex items-center gap-2 border border-amber-300 animate-in fade-in slide-in-from-top-4 duration-200">
+          <AlertCircle className="w-4 h-4 shrink-0 text-slate-950" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       {/* Dual Tab Mode Switcher */}
       <div className="p-1.5 rounded-2xl bg-slate-900 border border-slate-800 grid grid-cols-2 gap-2 shadow-xl">
         <button
@@ -371,10 +391,10 @@ export function DPGenerator({
             </p>
           </div>
 
-          <div className="relative mx-auto max-w-md rounded-2xl overflow-hidden border-2 border-orange-500/40 shadow-2xl bg-slate-900">
+          <div className="relative mx-auto w-full max-w-full sm:max-w-md rounded-2xl overflow-hidden border-2 border-orange-500/40 shadow-2xl bg-slate-900">
             <canvas
               ref={challengeCanvasRef}
-              className="w-full aspect-square block"
+              className="w-full max-w-full aspect-square block"
             />
           </div>
 
@@ -503,7 +523,7 @@ export function DPGenerator({
             </div>
           )}
 
-          <div className="relative mx-auto w-full max-w-[340px] sm:max-w-sm rounded-2xl overflow-hidden border-2 border-emerald-500/40 shadow-2xl bg-slate-900 group">
+          <div className="relative mx-auto w-full max-w-full sm:max-w-sm rounded-2xl overflow-hidden border-2 border-emerald-500/40 shadow-2xl bg-slate-900 group">
             <canvas
               ref={dpCanvasRef}
               onMouseDown={handleMouseDown}
