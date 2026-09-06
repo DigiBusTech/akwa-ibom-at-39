@@ -73,8 +73,9 @@ export function StandaloneDPGenerator() {
       zoom,
       panX,
       panY,
+      isCutout: useCutout,
     });
-  }, [imageObj, userName, userLga, activeBadge, zoom, panX, panY]);
+  }, [imageObj, userName, userLga, activeBadge, zoom, panX, panY, useCutout]);
 
   useEffect(() => {
     redraw();

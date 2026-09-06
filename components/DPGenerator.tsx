@@ -105,8 +105,9 @@ export function DPGenerator({
       zoom,
       panX,
       panY,
+      isCutout: useCutout,
     });
-  }, [imageObj, userName, userLga, badgeTitle, score, total, percentage, submissionId, zoom, panX, panY]);
+  }, [imageObj, userName, userLga, badgeTitle, score, total, percentage, submissionId, zoom, panX, panY, useCutout]);
 
   // Redraw active canvas whenever inputs or activeTab changes
   useEffect(() => {

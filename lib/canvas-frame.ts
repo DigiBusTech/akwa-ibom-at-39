@@ -20,6 +20,7 @@ export interface FrameRenderOptions {
   zoom: number;
   panX: number;
   panY: number;
+  isCutout?: boolean;
   onRenderComplete?: () => void;
 }
 
@@ -78,6 +79,7 @@ export function renderAnniversaryFrame(options: FrameRenderOptions) {
     zoom,
     panX,
     panY,
+    isCutout = true,
     onRenderComplete,
   } = options;
 
@@ -100,20 +102,21 @@ export function renderAnniversaryFrame(options: FrameRenderOptions) {
     }
 
     // 2. Draw User Portrait (Cutout over Orange Shape, Behind Green Nameplate)
-    const targetCX = 538;
-    const targetCY = 440;
+    // Frame circular aperture geometry: center (540, 438), radius ~285px
+    const circleCX = 540;
+    const circleCY = 438;
+    const circleR = 285;
 
     if (userImage && userImage.complete && userImage.naturalWidth > 0) {
       const iw = userImage.naturalWidth;
       const ih = userImage.naturalHeight;
-      const baseScale = Math.max(620 / iw, 540 / ih);
+      const baseScale = Math.max(560 / iw, 540 / ih);
       const drawW = Math.round(iw * baseScale * zoom);
       const drawH = Math.round(ih * baseScale * zoom);
-      const drawX = Math.round(targetCX - drawW / 2 + panX);
-      const drawY = Math.round(targetCY - drawH / 2 + panY);
+      const drawX = Math.round(circleCX - drawW / 2 + panX);
+      const drawY = Math.round(circleCY - drawH / 2 + panY);
 
-      // Create an offscreen buffer to feather the bottom edge seamlessly
-      // Prevents harsh horizontal cutoffs and blends into the orange motif
+      // Create an offscreen buffer to feather edges seamlessly
       const portraitCanvas = document.createElement("canvas");
       portraitCanvas.width = drawW;
       portraitCanvas.height = drawH;
@@ -123,29 +126,86 @@ export function renderAnniversaryFrame(options: FrameRenderOptions) {
         // Draw user image onto offscreen buffer
         pCtx.drawImage(userImage, 0, 0, drawW, drawH);
 
-        // Apply smooth transparency gradient mask to bottom 18-20%
-        const fadeHeight = Math.max(drawH * 0.20, 80);
-        const fadeStartY = drawH - fadeHeight;
+        // A. Photo-relative bottom feather:
+        // Ensures that any cropped waist/chest/arm crop never shows an abrupt horizontal cutoff
+        const photoFadeHeight = Math.max(Math.min(drawH * 0.28, 140), 60);
+        const photoFadeStart = drawH - photoFadeHeight;
 
         pCtx.globalCompositeOperation = "destination-out";
-        const maskGrad = pCtx.createLinearGradient(0, fadeStartY, 0, drawH);
-        maskGrad.addColorStop(0, "rgba(0, 0, 0, 0)");       // 0% transparent (100% visible)
-        maskGrad.addColorStop(0.25, "rgba(0, 0, 0, 0.10)"); // Subtle start of feather
-        maskGrad.addColorStop(0.55, "rgba(0, 0, 0, 0.40)"); // Soft mid feather
-        maskGrad.addColorStop(0.80, "rgba(0, 0, 0, 0.75)"); // Near transparent
-        maskGrad.addColorStop(1, "rgba(0, 0, 0, 1.0)");      // 100% erased (feathered to transparent)
+        const photoGrad = pCtx.createLinearGradient(0, photoFadeStart, 0, drawH);
+        photoGrad.addColorStop(0.00, "rgba(0, 0, 0, 0)");
+        photoGrad.addColorStop(0.25, "rgba(0, 0, 0, 0.10)");
+        photoGrad.addColorStop(0.50, "rgba(0, 0, 0, 0.35)");
+        photoGrad.addColorStop(0.75, "rgba(0, 0, 0, 0.70)");
+        photoGrad.addColorStop(0.92, "rgba(0, 0, 0, 0.92)");
+        photoGrad.addColorStop(1.00, "rgba(0, 0, 0, 1.0)");
 
-        pCtx.fillStyle = maskGrad;
-        pCtx.fillRect(0, fadeStartY, drawW, fadeHeight);
+        pCtx.fillStyle = photoGrad;
+        pCtx.fillRect(0, photoFadeStart, drawW, photoFadeHeight);
+
+        // B. Frame-coordinate nameplate dissolve:
+        // Smoothly dissolves the portrait into the orange background between canvas y=540 and y=685
+        // (naturally blending out right above the orange "I AM" badge and green nameplate)
+        const canvasFadeStart = 540;
+        const canvasFadeEnd = 685;
+        const portraitFadeStart = canvasFadeStart - drawY;
+        const portraitFadeEnd = canvasFadeEnd - drawY;
+
+        if (portraitFadeEnd > 0 && portraitFadeStart < drawH) {
+          const clampedStart = Math.max(0, portraitFadeStart);
+          const clampedEnd = Math.min(drawH, portraitFadeEnd);
+          if (clampedEnd > clampedStart) {
+            const nameplateGrad = pCtx.createLinearGradient(0, portraitFadeStart, 0, portraitFadeEnd);
+            nameplateGrad.addColorStop(0.00, "rgba(0, 0, 0, 0)");
+            nameplateGrad.addColorStop(0.30, "rgba(0, 0, 0, 0.20)");
+            nameplateGrad.addColorStop(0.60, "rgba(0, 0, 0, 0.60)");
+            nameplateGrad.addColorStop(0.85, "rgba(0, 0, 0, 0.90)");
+            nameplateGrad.addColorStop(1.00, "rgba(0, 0, 0, 1.0)");
+
+            pCtx.fillStyle = nameplateGrad;
+            pCtx.fillRect(0, clampedStart, drawW, clampedEnd - clampedStart);
+
+            // Erase completely beyond canvasFadeEnd so nothing bleeds behind or below the nameplate
+            if (portraitFadeEnd < drawH) {
+              pCtx.fillStyle = "rgba(0, 0, 0, 1.0)";
+              pCtx.fillRect(0, portraitFadeEnd, drawW, drawH - portraitFadeEnd);
+            }
+          }
+        }
+
         pCtx.globalCompositeOperation = "source-over"; // Reset buffer composite
 
-        // Draw the feathered portrait onto the main canvas
+        // C. Draw feathered portrait onto main canvas with circular / arched clipping
         ctx.save();
+        ctx.beginPath();
+        if (!isCutout) {
+          // Standard / Non-cutout: strict circular aperture
+          ctx.arc(circleCX, circleCY, circleR, 0, Math.PI * 2);
+        } else {
+          // Transparent Cutout: arched circular aperture
+          // Strictly conforms to the circular boundary on sides and bottom,
+          // while allowing upward headroom for head/hair between ARISE (x <= 220) and 39 (x >= 830) logos
+          const leftBound = circleCX - circleR;   // 255
+          const rightBound = circleCX + circleR;  // 825
+          const topBound = 80;                    // Headroom clearing top border
+
+          ctx.moveTo(rightBound, circleCY);
+          ctx.arc(circleCX, circleCY, circleR, 0, Math.PI, false);
+          ctx.lineTo(leftBound, topBound);
+          ctx.quadraticCurveTo(circleCX, topBound - 20, rightBound, topBound);
+          ctx.lineTo(rightBound, circleCY);
+          ctx.closePath();
+        }
+        ctx.clip();
+
         ctx.drawImage(portraitCanvas, drawX, drawY, drawW, drawH);
         ctx.restore();
       } else {
         // Fallback standard draw
         ctx.save();
+        ctx.beginPath();
+        ctx.arc(circleCX, circleCY, circleR, 0, Math.PI * 2);
+        ctx.clip();
         ctx.drawImage(userImage, drawX, drawY, drawW, drawH);
         ctx.restore();
       }
@@ -154,8 +214,8 @@ export function renderAnniversaryFrame(options: FrameRenderOptions) {
       ctx.save();
       const pw = 360;
       const ph = 150;
-      const px = targetCX - pw / 2;
-      const py = targetCY - ph / 2;
+      const px = circleCX - pw / 2;
+      const py = circleCY - ph / 2;
 
       ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
       if (typeof ctx.roundRect === "function") {
@@ -170,11 +230,11 @@ export function renderAnniversaryFrame(options: FrameRenderOptions) {
       ctx.font = "900 24px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("TAP TO UPLOAD PHOTO", targetCX, targetCY - 16);
+      ctx.fillText("TAP TO UPLOAD PHOTO", circleCX, circleCY - 16);
 
       ctx.font = "600 16px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif";
       ctx.fillStyle = "#FFD700";
-      ctx.fillText("AI Auto Background Cutout", targetCX, targetCY + 18);
+      ctx.fillText("AI Auto Background Cutout", circleCX, circleCY + 18);
       ctx.restore();
     }
 
