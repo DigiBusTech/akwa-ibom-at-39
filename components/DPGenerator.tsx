@@ -21,9 +21,11 @@ import {
   HelpCircle,
   X,
   Globe,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from "lucide-react";
 import { renderAnniversaryFrame, preloadOfficialFrame } from "@/lib/canvas-frame";
+import { removePhotoBackground } from "@/lib/background-removal";
 import { renderChallengeCard } from "@/lib/canvas-challenge-card";
 import { isDiasporaLocation, extractCountryFromDiaspora } from "@/lib/diaspora";
 
@@ -64,6 +66,8 @@ export function DPGenerator({
   // Share & Notification states
   const [copied, setCopied] = useState(false);
   const [socialModal, setSocialModal] = useState<"instagram" | "tiktok" | null>(null);
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
+  const [bgRemovalProgress, setBgRemovalProgress] = useState("");
 
   // Redraw Challenge Card Canvas
   const redrawChallenge = useCallback(() => {
@@ -120,12 +124,19 @@ export function DPGenerator({
 
 
   // Handle Photo Upload
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
+    setIsRemovingBg(true);
+    setBgRemovalProgress("Initializing AI background removal engine...");
+
+    try {
+      const blob = await removePhotoBackground(file, (msg) => {
+        setBgRemovalProgress(msg);
+      });
+
+      const url = URL.createObjectURL(blob);
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => {
@@ -133,13 +144,33 @@ export function DPGenerator({
         setZoom(1);
         setPanX(0);
         setPanY(0);
+        setIsRemovingBg(false);
+        setBgRemovalProgress("");
       };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+      img.onerror = () => {
+        throw new Error("Failed to load processed cutout");
+      };
+      img.src = url;
+    } catch (err) {
+      console.warn("Auto background removal failed, falling back to original photo:", err);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          setImageObj(img);
+          setZoom(1);
+          setPanX(0);
+          setPanY(0);
+          setIsRemovingBg(false);
+          setBgRemovalProgress("");
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  // Mouse & Touch Pan Handling
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setIsDragging(true);
     setDragStart({ x: e.clientX - panX, y: e.clientY - panY });
@@ -388,9 +419,30 @@ export function DPGenerator({
               </h4>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Upload your photo below, drag &amp; zoom to center your face inside the circle, and download your 1080p commemorative portrait. Save it now to wear your state pride on WhatsApp &amp; social media on <strong>September 23rd</strong>!
+              Upload your photo below, our AI automatically removes your background and positions your portrait seamlessly over the orange anniversary motif. Save it now to wear your state pride on WhatsApp &amp; social media on <strong>September 23rd</strong>!
             </p>
           </div>
+
+                    {/* AI Background Removal Processing Overlay */}
+          {isRemovingBg && (
+            <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-4 z-20 animate-in fade-in duration-200">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-2xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400">
+                  <Sparkles className="w-8 h-8 animate-pulse text-orange-400" />
+                </div>
+                <Loader2 className="w-6 h-6 text-emerald-400 animate-spin absolute -bottom-1 -right-1" />
+              </div>
+              <div className="space-y-1.5 max-w-xs">
+                <p className="text-base font-bold text-white">Removing background... Please wait</p>
+                <p className="text-xs text-orange-300 font-medium">
+                  {bgRemovalProgress || "Isolating portrait & crafting transparent cutout..."}
+                </p>
+              </div>
+              <div className="w-48 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-orange-500 via-amber-400 to-emerald-400 animate-pulse w-full" />
+              </div>
+            </div>
+          )}
 
           <div className="relative mx-auto max-w-sm rounded-2xl overflow-hidden border-2 border-emerald-500/40 shadow-2xl bg-slate-900 group">
             <canvas

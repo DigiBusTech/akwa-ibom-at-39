@@ -17,9 +17,11 @@ import {
   ArrowRight,
   User,
   MapPin,
-  Award
+  Award,
+  Loader2
 } from "lucide-react";
 import { renderAnniversaryFrame, preloadOfficialFrame } from "@/lib/canvas-frame";
+import { removePhotoBackground } from "@/lib/background-removal";
 import { AKWA_IBOM_LGAS } from "@/types/database";
 
 const POPULAR_BADGES = [
@@ -46,6 +48,8 @@ export function StandaloneDPGenerator() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [copied, setCopied] = useState(false);
+  const [isRemovingBg, setIsRemovingBg] = useState(false);
+  const [bgRemovalProgress, setBgRemovalProgress] = useState("");
 
   useEffect(() => {
     preloadOfficialFrame().catch(() => {});
@@ -71,12 +75,19 @@ export function StandaloneDPGenerator() {
     redraw();
   }, [redraw]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
+    setIsRemovingBg(true);
+    setBgRemovalProgress("Initializing AI background removal engine...");
+
+    try {
+      const blob = await removePhotoBackground(file, (msg) => {
+        setBgRemovalProgress(msg);
+      });
+
+      const url = URL.createObjectURL(blob);
       const img = new Image();
       img.crossOrigin = "anonymous";
       img.onload = () => {
@@ -84,10 +95,31 @@ export function StandaloneDPGenerator() {
         setZoom(1);
         setPanX(0);
         setPanY(0);
+        setIsRemovingBg(false);
+        setBgRemovalProgress("");
       };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
+      img.onerror = () => {
+        throw new Error("Failed to load processed cutout");
+      };
+      img.src = url;
+    } catch (err) {
+      console.warn("Auto background removal failed, falling back to original photo:", err);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          setImageObj(img);
+          setZoom(1);
+          setPanX(0);
+          setPanY(0);
+          setIsRemovingBg(false);
+          setBgRemovalProgress("");
+        };
+        img.src = event.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -144,6 +176,27 @@ export function StandaloneDPGenerator() {
       {/* Left Column: Interactive Canvas Preview */}
       <div className="lg:col-span-6 space-y-4">
         <div className="relative mx-auto max-w-sm rounded-3xl overflow-hidden border-2 border-emerald-500/40 shadow-2xl bg-slate-900 group">
+                    {/* AI Background Removal Processing Overlay */}
+          {isRemovingBg && (
+            <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-4 z-20 animate-in fade-in duration-200">
+              <div className="relative">
+                <div className="w-16 h-16 rounded-2xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400">
+                  <Sparkles className="w-8 h-8 animate-pulse text-orange-400" />
+                </div>
+                <Loader2 className="w-6 h-6 text-emerald-400 animate-spin absolute -bottom-1 -right-1" />
+              </div>
+              <div className="space-y-1.5 max-w-xs">
+                <p className="text-base font-bold text-white">Removing background... Please wait</p>
+                <p className="text-xs text-orange-300 font-medium">
+                  {bgRemovalProgress || "Isolating portrait & crafting transparent cutout..."}
+                </p>
+              </div>
+              <div className="w-48 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-orange-500 via-amber-400 to-emerald-400 animate-pulse w-full" />
+              </div>
+            </div>
+          )}
+
           <canvas
             ref={canvasRef}
             onMouseDown={handleMouseDown}
@@ -158,7 +211,7 @@ export function StandaloneDPGenerator() {
 
           {imageObj && (
             <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/70 backdrop-blur-md text-[11px] font-medium text-slate-200 pointer-events-none opacity-85 group-hover:opacity-100 transition shadow">
-              Drag photo to adjust inside circle
+              Drag portrait to position over orange motif
             </div>
           )}
 

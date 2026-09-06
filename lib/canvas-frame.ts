@@ -1,9 +1,10 @@
 /**
  * Official State-Approved Akwa Ibom @ 39 Anniversary DP Frame Canvas Renderer.
  * - Canvas Dimensions: 1080 x 1350 (4:5 Aspect Ratio)
- * - Official Frame: /frames/official-state-frame.png
- * - Portal Cutout: Centered at (538, 432), Radius 312px
- * - Dynamic Text: Green Badge centered at (537, 766) with Montserrat / Inter
+ * - Base Template: /frames/official-state-frame.png
+ * - Foreground Layer (Nameplate & Lower Banner): /frames/official-state-frame-foreground.png
+ * - Automatic background-removed portrait sits seamlessly over the central orange patterned motif.
+ * - Foreground overlay ensures portrait sits cleanly behind the "I AM" badge and green nameplate.
  */
 
 export interface FrameRenderOptions {
@@ -22,33 +23,47 @@ export interface FrameRenderOptions {
   onRenderComplete?: () => void;
 }
 
-let cachedFrameImage: HTMLImageElement | null = null;
-let frameLoadPromise: Promise<HTMLImageElement> | null = null;
+let cachedBaseImage: HTMLImageElement | null = null;
+let cachedForegroundImage: HTMLImageElement | null = null;
+let preloadPromise: Promise<[HTMLImageElement, HTMLImageElement]> | null = null;
 
-export function preloadOfficialFrame(): Promise<HTMLImageElement> {
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = (err) => reject(err);
+    img.src = src;
+  });
+}
+
+export function preloadOfficialFrame(): Promise<[HTMLImageElement, HTMLImageElement]> {
   if (typeof window === "undefined") {
     return Promise.reject(new Error("Browser only"));
   }
-  if (cachedFrameImage && cachedFrameImage.complete && cachedFrameImage.naturalWidth > 0) {
-    return Promise.resolve(cachedFrameImage);
+  if (
+    cachedBaseImage &&
+    cachedBaseImage.complete &&
+    cachedBaseImage.naturalWidth > 0 &&
+    cachedForegroundImage &&
+    cachedForegroundImage.complete &&
+    cachedForegroundImage.naturalWidth > 0
+  ) {
+    return Promise.resolve([cachedBaseImage, cachedForegroundImage]);
   }
-  if (frameLoadPromise) return frameLoadPromise;
 
-  frameLoadPromise = new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      cachedFrameImage = img;
-      resolve(img);
-    };
-    img.onerror = (err) => {
-      console.error("Failed to load official state frame:", err);
-      reject(err);
-    };
-    img.src = "/frames/official-state-frame.png";
+  if (preloadPromise) return preloadPromise;
+
+  preloadPromise = Promise.all([
+    loadImage("/frames/official-state-frame.png"),
+    loadImage("/frames/official-state-frame-foreground.png"),
+  ]).then(([base, foreground]) => {
+    cachedBaseImage = base;
+    cachedForegroundImage = foreground;
+    return [base, foreground];
   });
 
-  return frameLoadPromise;
+  return preloadPromise;
 }
 
 export function renderAnniversaryFrame(options: FrameRenderOptions) {
@@ -74,110 +89,115 @@ export function renderAnniversaryFrame(options: FrameRenderOptions) {
   if (canvas.width !== W) canvas.width = W;
   if (canvas.height !== H) canvas.height = H;
 
-  const drawScene = (frameImg: HTMLImageElement | null) => {
+  const drawScene = (baseImg: HTMLImageElement | null, fgImg: HTMLImageElement | null) => {
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = "#0A2012";
+    ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, W, H);
 
-    const portalCX = 538;
-    const portalCY = 432;
-    const portalRadius = 312;
+    // 1. Draw Base Official Template (Background & Orange Shape Motif)
+    if (baseImg && baseImg.complete && baseImg.naturalWidth > 0) {
+      ctx.drawImage(baseImg, 0, 0, W, H);
+    }
 
-    // 1. Draw User Photo clipped inside circle behind frame
-    ctx.save();
-    ctx.beginPath();
-    ctx.arc(portalCX, portalCY, portalRadius + 2, 0, Math.PI * 2);
-    ctx.clip();
+    // 2. Draw User Portrait (Cutout over Orange Shape, Behind Green Nameplate)
+    const targetCX = 538;
+    const targetCY = 440;
 
     if (userImage && userImage.complete && userImage.naturalWidth > 0) {
       const iw = userImage.naturalWidth;
       const ih = userImage.naturalHeight;
-      const baseScale = Math.max((portalRadius * 2) / iw, (portalRadius * 2) / ih);
+      const baseScale = Math.max(620 / iw, 540 / ih);
       const drawW = iw * baseScale * zoom;
       const drawH = ih * baseScale * zoom;
-      const drawX = portalCX - drawW / 2 + panX;
-      const drawY = portalCY - drawH / 2 + panY;
+      const drawX = targetCX - drawW / 2 + panX;
+      const drawY = targetCY - drawH / 2 + panY;
+
+      ctx.save();
       ctx.drawImage(userImage, drawX, drawY, drawW, drawH);
+      ctx.restore();
     } else {
-      ctx.fillStyle = "#0d2b1a";
-      ctx.fillRect(portalCX - portalRadius, portalCY - portalRadius, portalRadius * 2, portalRadius * 2);
+      // Interactive placeholder card positioned over the orange shape
+      ctx.save();
+      const pw = 360;
+      const ph = 150;
+      const px = targetCX - pw / 2;
+      const py = targetCY - ph / 2;
 
-      ctx.fillStyle = "rgba(255, 255, 255, 0.08)";
-      ctx.beginPath();
-      ctx.arc(portalCX, portalCY - 30, 80, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(portalCX, portalCY + 180, 160, Math.PI, Math.PI * 2);
-      ctx.fill();
+      ctx.fillStyle = "rgba(0, 0, 0, 0.35)";
+      if (typeof ctx.roundRect === "function") {
+        ctx.beginPath();
+        ctx.roundRect(px, py, pw, ph, 20);
+        ctx.fill();
+      } else {
+        ctx.fillRect(px, py, pw, ph);
+      }
 
-      ctx.fillStyle = "#E2E8F0";
-      ctx.font = "900 28px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "#FFFFFF";
+      ctx.font = "900 24px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("TAP TO UPLOAD PHOTO", portalCX, portalCY - 5);
+      ctx.textBaseline = "middle";
+      ctx.fillText("TAP TO UPLOAD PHOTO", targetCX, targetCY - 16);
 
-      ctx.font = "600 18px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif";
-      ctx.fillStyle = "#94A3B8";
-      ctx.fillText("Position & Zoom Into Circle", portalCX, portalCY + 30);
-    }
-    ctx.restore();
-
-
-    // 2. Draw Official Frame PNG Overlay (Layer 2)
-    if (frameImg && frameImg.complete && frameImg.naturalWidth > 0) {
-      ctx.drawImage(frameImg, 0, 0, W, H);
+      ctx.font = "600 16px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif";
+      ctx.fillStyle = "#FFD700";
+      ctx.fillText("AI Auto Background Cutout", targetCX, targetCY + 18);
+      ctx.restore();
     }
 
-    // 3. Draw Dynamic Text Badge (Layer 3: Centered over the Green Pill)
-    const badgeCX = 537;
+    // 3. Draw Foreground Overlay (Green Nameplate & Official Lower Banner)
+    // Ensures user's lower portrait sits cleanly behind the green box and does not obstruct text.
+    if (fgImg && fgImg.complete && fgImg.naturalWidth > 0) {
+      ctx.drawImage(fgImg, 0, 0, W, H);
+    }
+
+    // 4. Dynamic Text on Green Nameplate
     const cleanName = (userName || "PROUD CITIZEN").trim().toUpperCase();
 
     // Determine subtitle line
     let subtitleText = "";
     if (badgeTitle && score !== undefined && total !== undefined && total > 0) {
-      subtitleText = `★ ${badgeTitle.toUpperCase()} • ${score}/${total}`;
+      subtitleText = `${badgeTitle.toUpperCase()} • ${score}/${total}`;
     } else if (userLga && userLga.trim().length > 0) {
-      subtitleText = `★ PROUD AKWA IBOMITE • ${userLga.toUpperCase()}`;
-    } else {
-      subtitleText = "★ LAND OF PROMISE • 1987 - 2026";
+      subtitleText = `${(badgeTitle || "PROUD AKWA IBOMITE").toUpperCase()}, ${userLga.toUpperCase()} LGA`;
+    } else if (badgeTitle) {
+      subtitleText = badgeTitle.toUpperCase();
     }
 
-    const maxBadgeWidth = 390; // Safe width inside green box
+    const textX = 345;
+    const maxTextWidth = 385;
 
     ctx.save();
-    ctx.textAlign = "center";
+    ctx.textAlign = "left";
     ctx.textBaseline = "middle";
 
-    // Text placement Y coordinates
-    const nameY = subtitleText ? 766 : 778;
-    const subY = 804;
+    const nameY = subtitleText ? 752 : 772;
+    const subY = 788;
 
-    // Render User Name with Dynamic Scale-Down
-    let nameSize = 36;
+    // Render User Name (Line 1, Bold White)
+    let nameSize = 30;
     ctx.font = `900 ${nameSize}px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif`;
-    while (ctx.measureText(cleanName).width > maxBadgeWidth && nameSize > 16) {
+    while (ctx.measureText(cleanName).width > maxTextWidth && nameSize > 16) {
       nameSize -= 1;
       ctx.font = `900 ${nameSize}px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif`;
     }
 
-    // Subtle drop shadow for crisp visibility
     ctx.shadowColor = "rgba(0, 0, 0, 0.4)";
     ctx.shadowBlur = 4;
     ctx.shadowOffsetY = 1;
-
     ctx.fillStyle = "#FFFFFF";
-    ctx.fillText(cleanName, badgeCX, nameY);
+    ctx.fillText(cleanName, textX, nameY);
 
-    // Render Subtitle / LGA / Heritage Badge
+    // Render Subtitle / LGA / Heritage Badge (Line 2, White)
     if (subtitleText) {
       let subSize = 18;
-      ctx.font = `800 ${subSize}px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif`;
-      while (ctx.measureText(subtitleText).width > maxBadgeWidth && subSize > 11) {
+      ctx.font = `700 ${subSize}px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif`;
+      while (ctx.measureText(subtitleText).width > maxTextWidth && subSize > 11) {
         subSize -= 1;
-        ctx.font = `800 ${subSize}px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif`;
+        ctx.font = `700 ${subSize}px 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif`;
       }
-      ctx.fillStyle = "#FFD700"; // Rich Gold
+      ctx.fillStyle = "#FFFFFF";
       ctx.shadowBlur = 3;
-      ctx.fillText(subtitleText, badgeCX, subY);
+      ctx.fillText(subtitleText, textX, subY);
     }
 
     ctx.restore();
@@ -187,13 +207,20 @@ export function renderAnniversaryFrame(options: FrameRenderOptions) {
     }
   };
 
-  // Check if frame is already loaded
-  if (cachedFrameImage && cachedFrameImage.complete && cachedFrameImage.naturalWidth > 0) {
-    drawScene(cachedFrameImage);
+  if (
+    cachedBaseImage &&
+    cachedBaseImage.complete &&
+    cachedBaseImage.naturalWidth > 0 &&
+    cachedForegroundImage &&
+    cachedForegroundImage.complete &&
+    cachedForegroundImage.naturalWidth > 0
+  ) {
+    drawScene(cachedBaseImage, cachedForegroundImage);
   } else {
     preloadOfficialFrame()
-      .then((img) => drawScene(img))
-      .catch(() => drawScene(null));
+      .then(([base, fg]) => drawScene(base, fg))
+      .catch(() => drawScene(null, null));
   }
 }
+
 

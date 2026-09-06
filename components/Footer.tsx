@@ -33,9 +33,6 @@ export function Footer() {
             <Link href="/terms" className="hover:text-orange-400 transition">
               Terms of Use
             </Link>
-            <Link href="/admin" className="text-slate-500 hover:text-slate-300 transition">
-              Admin Portal
-            </Link>
           </nav>
         </div>
 

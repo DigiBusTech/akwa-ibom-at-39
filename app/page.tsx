@@ -65,14 +65,8 @@ export default async function Home() {
 
   return (
     <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-10">
-      {/* Live Birthday Wishes Ticker */}
-      <BirthdayTicker initialWishes={wishes} />
-
-      {/* Top Regions Leaderboard directly below the Wish Ticker */}
-      <TopRegionsLeaderboard initialStats={stats} />
-
-      {/* Hero Section: Root Connection (Home & Diaspora) */}
-      <div className="text-center space-y-6 pt-2">
+      {/* 1. Main Hero Section: Explaining Platform & Showing Official DP Preview */}
+      <section className="text-center space-y-8 pt-2">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-300 text-xs sm:text-sm font-semibold backdrop-blur-md">
             <Sparkles className="w-4 h-4 text-orange-400" />
@@ -126,6 +120,65 @@ export default async function Home() {
           </a>
         </div>
 
+        {/* DP Preview Showcase Card */}
+        <div className="max-w-3xl mx-auto p-4 sm:p-6 rounded-3xl bg-slate-900/80 border border-slate-800/90 shadow-2xl backdrop-blur-sm">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+            {/* Visual Frame Thumbnail */}
+            <div className="md:col-span-5 flex justify-center">
+              <Link href="/dp" className="block group/preview">
+                <div className="w-48 sm:w-52 aspect-[4/5] rounded-2xl overflow-hidden border-2 border-orange-500/40 shadow-2xl relative bg-slate-950 group-hover/preview:border-orange-500 transition-all duration-300 group-hover/preview:scale-[1.02]">
+                  <img
+                    src="/frames/official-state-frame.png"
+                    alt="Official Akwa Ibom @ 39 Statehood Anniversary DP Template"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent flex flex-col justify-end p-3 text-left">
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider text-orange-400 bg-black/60 px-2 py-0.5 rounded backdrop-blur-sm w-fit mb-1">
+                      <Sparkles className="w-3 h-3" /> Auto AI Cutout
+                    </span>
+                    <p className="text-xs font-bold text-white leading-tight">Official 39th Jubilee Frame</p>
+                    <p className="text-[10px] text-emerald-400 font-semibold mt-0.5">Click to Personalize &rarr;</p>
+                  </div>
+                </div>
+              </Link>
+            </div>
+
+            {/* Explanatory Features */}
+            <div className="md:col-span-7 text-left space-y-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Next-Gen Display Picture Studio</span>
+              </div>
+              <h3 className="text-lg sm:text-xl font-bold text-white leading-snug">
+                One-Click AI Background Removal &amp; Statehood Frame
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                Upload your portrait photo and our client-side AI instantly strips the background, placing your portrait seamlessly over the statehood orange motif. No photo editing software needed.
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1 text-xs text-slate-400 font-medium">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Auto-BG Removal
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> WhatsApp &amp; IG Ready
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-800/80 border border-slate-700/60 text-slate-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> 1080&times;1350 High-Res
+                </span>
+              </div>
+              <div className="pt-2">
+                <Link
+                  href="/dp"
+                  className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-orange-400 hover:text-orange-300 transition"
+                >
+                  <span>Launch DP Studio</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* The 31 LGA Heritage Battle Promo Callout */}
         <div className="max-w-2xl mx-auto p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-orange-500/15 via-amber-500/10 to-emerald-500/15 border border-orange-500/30 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-4 mt-2">
           <div className="space-y-1">
@@ -155,7 +208,13 @@ export default async function Home() {
             </Link>
           </div>
         </div>
-      </div>
+      </section>
+      {/* Top Participating Regions Leaderboard (Moved directly after Hero Section) */}
+      <TopRegionsLeaderboard initialStats={stats} />
+
+      {/* Live Birthday Wishes Ticker */}
+      <BirthdayTicker initialWishes={wishes} />
+
 
       {/* A Letter to Akwa Ibom: Daily Countdown Letter */}
       <section className="space-y-3">
