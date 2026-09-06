@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Client } from "@gradio/client";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 30; // Max execution duration in seconds for Vercel functions
+export const maxDuration = 45; // Max execution duration in seconds for Vercel functions
 
-const HF_MODEL_URL = "https://api-inference.huggingface.co/models/briaai/RMBG-1.4";
+const SPACE_NAME = "briaai/BRIA-RMBG-1.4";
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.HUGGINGFACE_API_KEY;
-
-  if (!apiKey || apiKey.trim() === "" || apiKey.includes("xxxxxxxx")) {
-    return NextResponse.json(
-      { error: "HUGGINGFACE_API_KEY is not configured or is a placeholder" },
-      { status: 503 }
-    );
-  }
-
-  let imageBuffer: ArrayBuffer | Uint8Array;
+  let imageBlob: Blob;
 
   try {
     const contentType = req.headers.get("content-type") || "";
@@ -26,7 +18,7 @@ export async function POST(req: NextRequest) {
       if (!file) {
         return NextResponse.json({ error: "Missing image in form data" }, { status: 400 });
       }
-      imageBuffer = await file.arrayBuffer();
+      imageBlob = file;
     } else if (contentType.includes("application/json")) {
       const json = await req.json();
       if (!json.image) {
@@ -35,13 +27,14 @@ export async function POST(req: NextRequest) {
       // Handle base64 string
       const base64Data = json.image.replace(/^data:image\/\w+;base64,/, "");
       const buf = Buffer.from(base64Data, "base64");
-      imageBuffer = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
+      imageBlob = new Blob([buf], { type: "image/jpeg" });
     } else {
       // Raw binary payload
-      imageBuffer = await req.arrayBuffer();
+      const arrayBuf = await req.arrayBuffer();
+      imageBlob = new Blob([arrayBuf], { type: "image/jpeg" });
     }
 
-    if (!imageBuffer || imageBuffer.byteLength === 0) {
+    if (!imageBlob || imageBlob.size === 0) {
       return NextResponse.json({ error: "Empty image payload" }, { status: 400 });
     }
   } catch (parseError: any) {
@@ -51,66 +44,79 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Call Hugging Face RMBG-1.4 Inference API with AbortSignal timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 28000);
-
   try {
-    const hfRes = await fetch(HF_MODEL_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey.trim()}`,
-        "Content-Type": "application/octet-stream",
-      },
-      body: imageBuffer as BodyInit,
-      signal: controller.signal,
-    });
+    // 1. Connect directly to the free hosted HF Space
+    const apiKey = process.env.HUGGINGFACE_API_KEY?.trim();
+    const hasValidKey = apiKey && !apiKey.includes("xxxxxxxx");
 
-    clearTimeout(timeoutId);
+    const client = await Client.connect(
+      SPACE_NAME,
+      hasValidKey ? { token: apiKey as `hf_${string}` } : undefined
+    );
 
-    if (hfRes.status === 429) {
+    // Normalize replica config root if needed
+    if (client.config?.root?.endsWith("/config")) {
+      client.config.root = client.config.root.replace(/\/config$/, "");
+    }
+    if (!client.api_info) {
+      try {
+        client.api_info = await client.view_api();
+      } catch {
+        // Fallback silently if info is already cached
+      }
+    }
+
+    // 2. Pass the uploaded file/blob to the space predictor (fn_index 0)
+    const result = await client.predict(0, [imageBlob]);
+
+    // 3. Extract the transparent PNG image object/url from result.data[0]
+    const fileData = (result.data as any[])?.[0];
+    let downloadUrl: string | undefined = fileData?.url;
+
+    if (!downloadUrl && fileData?.path) {
+      const root = client.config?.root || "https://briaai-bria-rmbg-1-4.hf.space";
+      downloadUrl = `${root}/file=${fileData.path}`;
+    }
+
+    if (!downloadUrl) {
       return NextResponse.json(
-        { error: "Hugging Face rate limit exceeded (429). Server busy." },
-        { status: 429 }
+        { error: "Model space did not return an output file URL" },
+        { status: 502 }
       );
     }
 
-    if (hfRes.status === 503) {
+    // 4. Fetch the transparent PNG binary payload
+    const imageResponse = await fetch(downloadUrl);
+    if (!imageResponse.ok) {
       return NextResponse.json(
-        { error: "Model is currently loading or server unavailable (503)." },
-        { status: 503 }
+        { error: `Failed to download output image: ${imageResponse.status}` },
+        { status: 502 }
       );
     }
 
-    if (!hfRes.ok) {
-      const errorText = await hfRes.text().catch(() => "Unknown Hugging Face error");
-      return NextResponse.json(
-        { error: `Hugging Face inference error (${hfRes.status}): ${errorText}` },
-        { status: hfRes.status >= 400 && hfRes.status < 600 ? hfRes.status : 502 }
-      );
-    }
+    const pngBuffer = await imageResponse.arrayBuffer();
 
-    const outputBuffer = await hfRes.arrayBuffer();
-
-    return new NextResponse(outputBuffer, {
+    // 5. Return PNG buffer to the frontend
+    return new NextResponse(pngBuffer, {
       status: 200,
       headers: {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=86400, s-maxage=86400",
       },
     });
-  } catch (error: any) {
-    clearTimeout(timeoutId);
+  } catch (err: any) {
+    console.warn("Gradio space inference error or queue timeout:", err);
 
-    if (error.name === "AbortError" || controller.signal.aborted) {
+    const errorMsg = String(err?.message || err);
+    if (errorMsg.includes("queue") || errorMsg.includes("timeout") || errorMsg.includes("429")) {
       return NextResponse.json(
-        { error: "Background removal timed out after 28 seconds." },
-        { status: 504 }
+        { error: "Gradio queue is full or server busy. Using standard portrait mode." },
+        { status: 429 }
       );
     }
 
     return NextResponse.json(
-      { error: `Inference proxy error: ${error?.message || "Unknown error"}` },
+      { error: `Background removal failed: ${errorMsg}` },
       { status: 500 }
     );
   }
