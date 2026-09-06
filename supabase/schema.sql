@@ -160,3 +160,37 @@ $$;
 
 -- Grant execution permissions
 GRANT EXECUTE ON FUNCTION evaluate_quiz_submission(JSONB) TO anon, authenticated, service_role;
+
+-- ============================================================================
+-- 6. DAILY LETTERS TABLE ("A Letter to Akwa Ibom" Statehood Countdown)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS daily_letters (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    day_number INTEGER NOT NULL UNIQUE,
+    publish_date DATE NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE daily_letters ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public can view daily letters"
+    ON daily_letters FOR SELECT
+    USING (true);
+
+CREATE POLICY "Admin full access on daily letters"
+    ON daily_letters FOR ALL
+    USING (true)
+    WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_daily_letters_date ON daily_letters(publish_date);
+CREATE INDEX IF NOT EXISTS idx_daily_letters_day ON daily_letters(day_number);
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE daily_letters;
+EXCEPTION WHEN others THEN NULL;
+END $$;
+

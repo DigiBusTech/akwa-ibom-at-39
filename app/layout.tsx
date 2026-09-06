@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Outfit } from "next/font/google";
+import { Outfit, Montserrat } from "next/font/google";
 import Link from "next/link";
 import NextTopLoader from "nextjs-toploader";
+import { Camera } from "lucide-react";
 import { AkwaIbomMap } from "@/components/AkwaIbomMap";
 import { Footer } from "@/components/Footer";
 import "./globals.css";
@@ -11,6 +12,13 @@ const outfit = Outfit({
   variable: "--font-outfit",
   display: "swap",
   weight: ["400", "500", "600", "700", "800", "900"],
+});
+
+const montserrat = Montserrat({
+  subsets: ["latin"],
+  variable: "--font-montserrat",
+  display: "swap",
+  weight: ["600", "700", "800", "900"],
 });
 
 export const viewport: Viewport = {
@@ -71,7 +79,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${outfit.variable} dark`}>
+    <html lang="en" className={`${outfit.variable} ${montserrat.variable} dark`}>
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#007A33" />
@@ -107,6 +115,13 @@ export default function RootLayout({
             </Link>
 
             <nav className="flex items-center gap-2 sm:gap-3 text-xs font-semibold">
+              <Link
+                href="/dp"
+                className="px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition flex items-center gap-1.5"
+              >
+                <Camera className="w-3.5 h-3.5" />
+                <span>DP Frame</span>
+              </Link>
               <Link
                 href="/leaderboard"
                 className="px-3 py-1.5 rounded-lg bg-slate-900 text-slate-300 border border-slate-800 hover:text-white hover:border-slate-700 transition flex items-center gap-1.5"

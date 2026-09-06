@@ -149,6 +149,37 @@ export interface Database {
         };
         Relationships: [];
       };
+      daily_letters: {
+        Row: {
+          id: string;
+          day_number: number;
+          publish_date: string;
+          title: string;
+          content: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          day_number: number;
+          publish_date: string;
+          title: string;
+          content: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          day_number?: number;
+          publish_date?: string;
+          title?: string;
+          content?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+
     };
     Views: {
       public_quiz_options: {
@@ -181,6 +212,8 @@ export type Option = Database["public"]["Tables"]["options"]["Row"];
 export type PublicQuizOption = Database["public"]["Views"]["public_quiz_options"]["Row"];
 export type QuizSubmission = Database["public"]["Tables"]["quiz_submissions"]["Row"];
 export type BirthdayWish = Database["public"]["Tables"]["birthday_wishes"]["Row"];
+export type DailyLetter = Database["public"]["Tables"]["daily_letters"]["Row"];
+
 
 export interface AnswerSubmissionItem {
   question_id: string;

@@ -23,7 +23,7 @@ import {
   Globe,
   ArrowRight
 } from "lucide-react";
-import { renderAnniversaryFrame } from "@/lib/canvas-frame";
+import { renderAnniversaryFrame, preloadOfficialFrame } from "@/lib/canvas-frame";
 import { renderChallengeCard } from "@/lib/canvas-challenge-card";
 import { isDiasporaLocation, extractCountryFromDiaspora } from "@/lib/diaspora";
 
@@ -113,6 +113,11 @@ export function DPGenerator({
   useEffect(() => {
     redrawChallenge();
   }, [redrawChallenge]);
+  // Preload official frame image in the background
+  useEffect(() => {
+    preloadOfficialFrame().catch(() => {});
+  }, []);
+
 
   // Handle Photo Upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -379,15 +384,15 @@ export function DPGenerator({
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
               <h4 className="text-xs sm:text-sm font-bold text-white">
-                September 23rd Jubilee DP Preparation
+                Official State-Approved Anniversary DP Frame
               </h4>
             </div>
             <p className="text-xs text-slate-300 leading-relaxed">
-              Upload your photo below, adjust zoom/position, and download your 1080x1080 anniversary portrait. Keep it saved in your phone gallery so you can set it on WhatsApp &amp; social media on <strong>September 23rd</strong>!
+              Upload your photo below, drag &amp; zoom to center your face inside the circle, and download your 1080p commemorative portrait. Save it now to wear your state pride on WhatsApp &amp; social media on <strong>September 23rd</strong>!
             </p>
           </div>
 
-          <div className="relative mx-auto max-w-md rounded-2xl overflow-hidden border-2 border-emerald-500/40 shadow-2xl bg-slate-900 group">
+          <div className="relative mx-auto max-w-sm rounded-2xl overflow-hidden border-2 border-emerald-500/40 shadow-2xl bg-slate-900 group">
             <canvas
               ref={dpCanvasRef}
               onMouseDown={handleMouseDown}
@@ -397,7 +402,7 @@ export function DPGenerator({
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="w-full aspect-square cursor-grab active:cursor-grabbing block touch-none"
+              className="w-full aspect-[4/5] cursor-grab active:cursor-grabbing block touch-none"
             />
 
             {imageObj && (
@@ -425,7 +430,7 @@ export function DPGenerator({
                 className="w-full h-14 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] font-bold text-white text-sm cursor-pointer shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2.5 touch-manipulation"
               >
                 <Download className="w-5 h-5 shrink-0" />
-                <span>Download 1080x1080 DP</span>
+                <span>Download Official DP (PNG)</span>
               </button>
             </div>
 

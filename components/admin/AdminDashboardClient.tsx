@@ -13,23 +13,29 @@ import {
   TrendingUp,
   Download,
   RotateCcw,
+  BarChart3,
+  ScrollText,
 } from "lucide-react";
 import type { AdminAnalyticsData } from "@/app/actions/admin";
+import type { DailyLetter } from "@/types/database";
 import { fetchAdminDashboardData } from "@/app/actions/admin";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { AdminCharts } from "./AdminCharts";
 import { WishesTable } from "./WishesTable";
+import { DailyLettersManager } from "./DailyLettersManager";
 import { AkwaIbomMap } from "../AkwaIbomMap";
 
 interface AdminDashboardClientProps {
   initialData: AdminAnalyticsData;
+  initialDailyLetters?: DailyLetter[];
 }
 
-export function AdminDashboardClient({ initialData }: AdminDashboardClientProps) {
+export function AdminDashboardClient({ initialData, initialDailyLetters = [] }: AdminDashboardClientProps) {
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [authError, setAuthError] = useState("");
+  const [activeTab, setActiveTab] = useState<"analytics" | "letters">("analytics");
 
   // Live Data & Telemetry State - Always declared unconditionally at top level (React Rules of Hooks)
   const [data, setData] = useState<AdminAnalyticsData>(initialData);
@@ -198,67 +204,102 @@ export function AdminDashboardClient({ initialData }: AdminDashboardClientProps)
         </div>
       </div>
 
-      {/* KPI Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Total Participants</span>
-            <Users className="w-4 h-4 text-orange-400" />
-          </div>
-          <div className="text-3xl font-black text-white">
-            {totalParticipants.toLocaleString()}
-          </div>
-          <div className="text-xs text-emerald-400 flex items-center gap-1 font-medium">
-            <TrendingUp className="w-3.5 h-3.5" />
-            <span>Active civic participation</span>
-          </div>
-        </div>
+      {/* Tab Navigation: Telemetry vs Daily Letters */}
+      <div className="p-1.5 rounded-2xl bg-slate-900 border border-slate-800 grid grid-cols-2 gap-2 shadow-xl">
+        <button
+          onClick={() => setActiveTab("analytics")}
+          className={`py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer touch-manipulation ${
+            activeTab === "analytics"
+              ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/20"
+              : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          <span>Telemetry &amp; Pitch Analytics</span>
+        </button>
 
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Average Quiz Score</span>
-            <Award className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="text-3xl font-black text-white">
-            {averageScorePercentage}%
-          </div>
-          <div className="text-xs text-slate-400">
-            {averageScorePoints} / 15 points average
-          </div>
-        </div>
-
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Diaspora Share</span>
-            <Globe className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="text-3xl font-black text-white">
-            {diasporaPct}%
-          </div>
-          <div className="text-xs text-orange-400 font-medium">
-            {diasporaCount.toLocaleString()} Global participants
-          </div>
-        </div>
-
-        <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-2">
-          <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Anniversary Wishes</span>
-            <Sparkles className="w-4 h-4 text-cyan-400" />
-          </div>
-          <div className="text-3xl font-black text-white">
-            {recentWishes.length}
-          </div>
-          <div className="text-xs text-slate-400">
-            Live on celebratory ticker
-          </div>
-        </div>
+        <button
+          onClick={() => setActiveTab("letters")}
+          className={`py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer touch-manipulation ${
+            activeTab === "letters"
+              ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-lg shadow-emerald-600/20"
+              : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+          }`}
+        >
+          <ScrollText className="w-4 h-4" />
+          <span>Daily Countdown Letters ({initialDailyLetters.length})</span>
+        </button>
       </div>
 
-      {/* Visual Analytics Charts (Recharts) */}
-      <AdminCharts homeVsDiaspora={homeVsDiaspora} top10Locations={top10Locations} />
+      {activeTab === "analytics" ? (
+        <div className="space-y-8 animate-in fade-in duration-300">
+          {/* KPI Stat Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-wider">Total Participants</span>
+                <Users className="w-4 h-4 text-orange-400" />
+              </div>
+              <div className="text-3xl font-black text-white">
+                {totalParticipants.toLocaleString()}
+              </div>
+              <div className="text-xs text-emerald-400 flex items-center gap-1 font-medium">
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>Active civic participation</span>
+              </div>
+            </div>
 
-      {/* Wishes Moderation Table */}
-      <WishesTable initialWishes={recentWishes} />
+            <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-wider">Average Quiz Score</span>
+                <Award className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-3xl font-black text-white">
+                {averageScorePercentage}%
+              </div>
+              <div className="text-xs text-slate-400">
+                {averageScorePoints} / 15 points average
+              </div>
+            </div>
+
+            <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-wider">Diaspora Share</span>
+                <Globe className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="text-3xl font-black text-white">
+                {diasporaPct}%
+              </div>
+              <div className="text-xs text-orange-400 font-medium">
+                {diasporaCount.toLocaleString()} Global participants
+              </div>
+            </div>
+
+            <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-xs font-semibold uppercase tracking-wider">Anniversary Wishes</span>
+                <Sparkles className="w-4 h-4 text-cyan-400" />
+              </div>
+              <div className="text-3xl font-black text-white">
+                {recentWishes.length}
+              </div>
+              <div className="text-xs text-slate-400">
+                Live on celebratory ticker
+              </div>
+            </div>
+          </div>
+
+          {/* Visual Analytics Charts (Recharts) */}
+          <AdminCharts homeVsDiaspora={homeVsDiaspora} top10Locations={top10Locations} />
+
+          {/* Wishes Moderation Table */}
+          <WishesTable initialWishes={recentWishes} />
+        </div>
+      ) : (
+        <div className="animate-in fade-in duration-300">
+          <DailyLettersManager initialLetters={initialDailyLetters} />
+        </div>
+      )}
     </main>
   );
 }

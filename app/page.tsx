@@ -22,15 +22,18 @@ import {
 } from "lucide-react";
 import { fetchBirthdayWishes } from "@/app/actions/wishes";
 import { fetchCampaignStats } from "@/app/actions/stats";
+import { fetchTodayDailyLetter } from "@/app/actions/daily-letters";
 import { BirthdayTicker } from "@/components/BirthdayTicker";
 import { LiveHeroCounter, TopRegionsLeaderboard } from "@/components/LiveStats";
+import { DailyLetterCard } from "@/components/DailyLetter";
 
 export const revalidate = 10;
 
 export default async function Home() {
-  const [wishes, stats] = await Promise.all([
+  const [wishes, stats, todayLetter] = await Promise.all([
     fetchBirthdayWishes(),
     fetchCampaignStats(),
+    fetchTodayDailyLetter(),
   ]);
 
   const categories = [
@@ -107,12 +110,22 @@ export default async function Home() {
             </Link>
           </div>
 
+          <Link
+            href="/dp"
+            className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-700 hover:to-teal-600 font-bold text-white flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition"
+          >
+            <Camera className="w-4 h-4" />
+            <span>Create Sept 23rd DP Frame</span>
+          </Link>
+
           <a 
             href="#root-connection"
             className="px-6 py-3.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-700 font-semibold text-slate-300 hover:text-white transition"
           >
             Root Connection Vision
           </a>
+        </div>
+
         {/* The 31 LGA Heritage Battle Promo Callout */}
         <div className="max-w-2xl mx-auto p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-orange-500/15 via-amber-500/10 to-emerald-500/15 border border-orange-500/30 text-center sm:text-left flex flex-col sm:flex-row items-center justify-between gap-4 mt-2">
           <div className="space-y-1">
@@ -142,9 +155,12 @@ export default async function Home() {
             </Link>
           </div>
         </div>
-
-        </div>
       </div>
+
+      {/* A Letter to Akwa Ibom: Daily Countdown Letter */}
+      <section className="space-y-3">
+        <DailyLetterCard initialLetter={todayLetter} />
+      </section>
 
       {/* Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

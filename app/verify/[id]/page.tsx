@@ -2,6 +2,8 @@ import React from "react";
 import Link from "next/link";
 import { ShieldCheck, Award, CheckCircle2, MapPin, Calendar, Sparkles, ExternalLink } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { fetchTodayDailyLetter } from "@/app/actions/daily-letters";
+import { DailyLetterCard } from "@/components/DailyLetter";
 
 interface VerifyProps {
   params: { id: string };
@@ -23,6 +25,7 @@ export default async function VerifyPage({ params, searchParams }: VerifyProps) 
   let userName = searchParams.name || "Akwa Ibomite";
   let userLga = searchParams.lga || "Akwa Ibom State";
   let verifiedDate = new Date().toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const todayLetter = await fetchTodayDailyLetter();
 
   try {
     const supabase = await createClient();
@@ -132,6 +135,11 @@ export default async function VerifyPage({ params, searchParams }: VerifyProps) 
             Take Trivia Challenge
           </Link>
         </div>
+      </div>
+
+      {/* Today's Commemorative Daily Letter */}
+      <div className="w-full max-w-2xl mt-8">
+        <DailyLetterCard initialLetter={todayLetter} />
       </div>
     </main>
   );
