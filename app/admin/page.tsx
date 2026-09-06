@@ -1,6 +1,7 @@
 import React from "react";
 import { fetchAdminDashboardData } from "@/app/actions/admin";
 import { fetchAllDailyLettersAdmin } from "@/app/actions/daily-letters";
+import { fetchPlatformSettings } from "@/app/actions/settings";
 import { AdminDashboardClient } from "@/components/admin/AdminDashboardClient";
 
 export const metadata = {
@@ -12,11 +13,19 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
-  const [data, dailyLetters] = await Promise.all([
+  const [data, dailyLetters, platformSettings] = await Promise.all([
     fetchAdminDashboardData(),
     fetchAllDailyLettersAdmin(),
+    fetchPlatformSettings(),
   ]);
 
-  return <AdminDashboardClient initialData={data} initialDailyLetters={dailyLetters} />;
+  return (
+    <AdminDashboardClient
+      initialData={data}
+      initialDailyLetters={dailyLetters}
+      initialPlatformSettings={platformSettings}
+    />
+  );
 }
+
 

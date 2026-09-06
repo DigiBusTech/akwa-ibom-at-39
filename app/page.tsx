@@ -23,17 +23,20 @@ import {
 import { fetchBirthdayWishes } from "@/app/actions/wishes";
 import { fetchCampaignStats } from "@/app/actions/stats";
 import { fetchTodayDailyLetter } from "@/app/actions/daily-letters";
+import { fetchPlatformSettings } from "@/app/actions/settings";
 import { BirthdayTicker } from "@/components/BirthdayTicker";
 import { LiveHeroCounter, TopRegionsLeaderboard } from "@/components/LiveStats";
 import { DailyLetterCard } from "@/components/DailyLetter";
+import { CelebrationOverlay } from "@/components/CelebrationOverlay";
 
 export const revalidate = 10;
 
 export default async function Home() {
-  const [wishes, stats, todayLetter] = await Promise.all([
+  const [wishes, stats, todayLetter, platformSettings] = await Promise.all([
     fetchBirthdayWishes(),
     fetchCampaignStats(),
     fetchTodayDailyLetter(),
+    fetchPlatformSettings(),
   ]);
 
   const categories = [
@@ -65,6 +68,10 @@ export default async function Home() {
 
   return (
     <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-10">
+      {/* Scheduled Confetti & Fireworks Celebration Overlay */}
+      <CelebrationOverlay initialSettings={platformSettings} />
+
+
       {/* 1. Main Hero Section: Explaining Platform & Showing Official DP Preview */}
       <section className="text-center space-y-8 pt-2">
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">

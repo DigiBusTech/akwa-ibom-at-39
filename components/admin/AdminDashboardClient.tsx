@@ -16,9 +16,10 @@ import {
   Radio,
   Trophy,
   ShieldAlert,
+  PartyPopper,
 } from "lucide-react";
 import type { AdminAnalyticsData } from "@/app/actions/admin";
-import type { DailyLetter } from "@/types/database";
+import type { DailyLetter, PlatformSettings } from "@/types/database";
 import { fetchAdminDashboardData } from "@/app/actions/admin";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
 import { LiveTrafficFeed } from "./LiveTrafficFeed";
@@ -27,16 +28,22 @@ import { ExecutiveExportPanel } from "./ExecutiveExportPanel";
 import { AdminCharts } from "./AdminCharts";
 import { WishesTable } from "./WishesTable";
 import { DailyLettersManager } from "./DailyLettersManager";
+import { CelebrationSettingsManager } from "./CelebrationSettingsManager";
 import { AkwaIbomMap } from "../AkwaIbomMap";
 
-type AdminTab = "traffic" | "submissions" | "letters" | "analytics";
+type AdminTab = "traffic" | "submissions" | "letters" | "analytics" | "celebration";
 
 interface AdminDashboardClientProps {
   initialData: AdminAnalyticsData;
   initialDailyLetters?: DailyLetter[];
+  initialPlatformSettings?: PlatformSettings | null;
 }
 
-export function AdminDashboardClient({ initialData, initialDailyLetters = [] }: AdminDashboardClientProps) {
+export function AdminDashboardClient({
+  initialData,
+  initialDailyLetters = [],
+  initialPlatformSettings,
+}: AdminDashboardClientProps) {
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
@@ -210,8 +217,8 @@ export function AdminDashboardClient({ initialData, initialDailyLetters = [] }: 
         </div>
       </div>
 
-      {/* Clean 4-Way Tab Interface */}
-      <div className="p-1.5 rounded-2xl bg-slate-900 border border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-2 shadow-xl">
+      {/* Clean 5-Way Tab Interface */}
+      <div className="p-1.5 rounded-2xl bg-slate-900 border border-slate-800 grid grid-cols-2 md:grid-cols-5 gap-2 shadow-xl">
         <button
           onClick={() => setActiveTab("traffic")}
           className={`py-3 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer touch-manipulation ${
@@ -267,6 +274,18 @@ export function AdminDashboardClient({ initialData, initialDailyLetters = [] }: 
         >
           <BarChart3 className="w-4 h-4 text-purple-300" />
           <span>State Analytics</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("celebration")}
+          className={`col-span-2 md:col-span-1 py-3 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer touch-manipulation ${
+            activeTab === "celebration"
+              ? "bg-gradient-to-r from-pink-600 to-rose-600 text-white shadow-lg shadow-pink-600/20"
+              : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+          }`}
+        >
+          <PartyPopper className="w-4 h-4 text-pink-300" />
+          <span>Celebration Settings</span>
         </button>
       </div>
 
@@ -363,6 +382,13 @@ export function AdminDashboardClient({ initialData, initialDailyLetters = [] }: 
           <WishesTable initialWishes={recentWishes} />
         </div>
       )}
+      {/* Tab 5: Celebration Settings */}
+      {activeTab === "celebration" && (
+        <div className="animate-in fade-in duration-300">
+          <CelebrationSettingsManager initialSettings={initialPlatformSettings} />
+        </div>
+      )}
+
     </main>
   );
 }

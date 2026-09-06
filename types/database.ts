@@ -218,6 +218,27 @@ export interface Database {
         };
         Relationships: [];
       };
+      platform_settings: {
+        Row: {
+          id: number;
+          confetti_start_time: string | null;
+          confetti_end_time: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          id?: number;
+          confetti_start_time?: string | null;
+          confetti_end_time?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          id?: number;
+          confetti_start_time?: string | null;
+          confetti_end_time?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
 
     };
     Views: {
@@ -253,6 +274,7 @@ export type QuizSubmission = Database["public"]["Tables"]["quiz_submissions"]["R
 export type BirthdayWish = Database["public"]["Tables"]["birthday_wishes"]["Row"];
 export type DailyLetter = Database["public"]["Tables"]["daily_letters"]["Row"];
 export type SiteTraffic = Database["public"]["Tables"]["site_traffic"]["Row"];
+export type PlatformSettings = Database["public"]["Tables"]["platform_settings"]["Row"];
 
 
 export interface AnswerSubmissionItem {
