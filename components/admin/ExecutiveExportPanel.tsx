@@ -170,7 +170,7 @@ export function ExecutiveExportPanel({ data }: ExecutiveExportPanelProps) {
                 Akwa Ibom @ 39 Anniversary Executive Report
               </h1>
               <p className="text-xs text-slate-400">
-                Independent Civic Engagement, Leaderboard &amp; Edge Traffic Analytics
+                Civic Engagement, Leaderboard &amp; Edge Traffic Analytics
               </p>
             </div>
             <div className="text-right text-xs text-slate-400">

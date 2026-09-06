@@ -36,11 +36,20 @@ export function Footer() {
           </nav>
         </div>
 
-        {/* Mandatory Independent Tech Disclaimer */}
+        {/* Technology Partner Disclaimer */}
         <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-800/70 text-center sm:text-left flex flex-col sm:flex-row items-center gap-3">
           <Shield className="w-5 h-5 text-orange-400 shrink-0 hidden sm:block" />
           <p className="text-xs leading-relaxed text-slate-300">
-            Built with 🧡 by Sabi AI Technologies. This platform is an independent tech contribution celebrating Akwa Ibom State. It is not affiliated with, endorsed by, or representing the Akwa Ibom State Government.
+            Powered by{" "}
+            <a
+              href="https://www.sabiaitech.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-orange-400 hover:text-orange-300 font-bold underline underline-offset-2"
+            >
+              Sabi AI Technologies
+            </a>{" "}
+            in support of the Akwa Ibom @ 39 Anniversary and the ARISE Agenda.
           </p>
         </div>
 
