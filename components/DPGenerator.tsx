@@ -25,7 +25,7 @@ import {
   Loader2
 } from "lucide-react";
 import { renderAnniversaryFrame, preloadOfficialFrame } from "@/lib/canvas-frame";
-import { removePhotoBackground } from "@/lib/background-removal";
+import { removePhotoBackground, precompressUploadedImage } from "@/lib/background-removal";
 import { renderChallengeCard } from "@/lib/canvas-challenge-card";
 import { isDiasporaLocation, extractCountryFromDiaspora } from "@/lib/diaspora";
 
@@ -72,6 +72,7 @@ export function DPGenerator({
   const [isRemovingBg, setIsRemovingBg] = useState(false);
   const [bgRemovalProgress, setBgRemovalProgress] = useState("");
   const cancelBgRemovalRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Redraw Challenge Card Canvas
   const redrawChallenge = useCallback(() => {
@@ -127,14 +128,14 @@ export function DPGenerator({
     preloadOfficialFrame().catch(() => {});
   }, []);
 
-
   const handleSkipCutout = () => {
     cancelBgRemovalRef.current = true;
+    abortControllerRef.current?.abort();
     setIsRemovingBg(false);
     setBgRemovalProgress("");
+    setUseCutout(false);
     if (originalImage) {
       setImageObj(originalImage);
-      setUseCutout(false);
     }
   };
 
@@ -151,8 +152,12 @@ export function DPGenerator({
     if (!file) return;
 
     cancelBgRemovalRef.current = false;
+    abortControllerRef.current?.abort();
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     setIsRemovingBg(true);
-    setBgRemovalProgress("Loading photo & optimizing for fast AI...");
+    setBgRemovalProgress("Loading photo & preparing fast AI engine...");
 
     // Immediately load original photo so user never waits with an empty canvas
     const origUrl = URL.createObjectURL(file);
@@ -170,19 +175,30 @@ export function DPGenerator({
     rawImg.src = origUrl;
 
     try {
-      const blob = await removePhotoBackground(file, (msg) => {
-        if (!cancelBgRemovalRef.current) {
-          setBgRemovalProgress(msg);
-        }
-      });
+      // 1. Client-Side Image Pre-Compression: strictly capped at max 600px, 0.7 JPEG quality
+      setBgRemovalProgress("Downscaling image resolution (max 600px)...");
+      const compressedBlob = await precompressUploadedImage(file, 600, 0.7);
 
-      if (cancelBgRemovalRef.current) return;
+      if (cancelBgRemovalRef.current || abortController.signal.aborted) return;
+
+      // 2. Feed lightweight compressed Blob into removePhotoBackground with AbortSignal
+      const blob = await removePhotoBackground(
+        compressedBlob,
+        (msg) => {
+          if (!cancelBgRemovalRef.current && !abortController.signal.aborted) {
+            setBgRemovalProgress(msg);
+          }
+        },
+        abortController.signal
+      );
+
+      if (cancelBgRemovalRef.current || abortController.signal.aborted) return;
 
       const cutoutUrl = URL.createObjectURL(blob);
       const cutoutImg = new Image();
       cutoutImg.crossOrigin = "anonymous";
       cutoutImg.onload = () => {
-        if (cancelBgRemovalRef.current) return;
+        if (cancelBgRemovalRef.current || abortController.signal.aborted) return;
         setCutoutImage(cutoutImg);
         setImageObj(cutoutImg);
         setUseCutout(true);
@@ -460,7 +476,7 @@ export function DPGenerator({
 
                     {/* AI Background Removal Processing Overlay */}
           {isRemovingBg && (
-            <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-4 z-20 animate-in fade-in duration-200">
+            <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-4 z-20 animate-in fade-in duration-200">
               <div className="relative">
                 <div className="w-16 h-16 rounded-2xl bg-orange-500/20 border border-orange-500/40 flex items-center justify-center text-orange-400">
                   <Sparkles className="w-8 h-8 animate-pulse text-orange-400" />
@@ -479,14 +495,15 @@ export function DPGenerator({
               <button
                 type="button"
                 onClick={handleSkipCutout}
-                className="mt-2 px-4 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-xs font-semibold text-slate-200 border border-slate-700 transition cursor-pointer shadow"
+                className="w-full max-w-xs mt-2 px-4 py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition shadow-lg flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
               >
-                Skip Cutout &amp; Use Photo Directly &rarr;
+                <span>Taking too long? Skip and use original photo</span>
+                <span aria-hidden="true">&rarr;</span>
               </button>
             </div>
           )}
 
-          <div className="relative mx-auto max-w-sm rounded-2xl overflow-hidden border-2 border-emerald-500/40 shadow-2xl bg-slate-900 group">
+          <div className="relative mx-auto w-full max-w-[340px] sm:max-w-sm rounded-2xl overflow-hidden border-2 border-emerald-500/40 shadow-2xl bg-slate-900 group">
             <canvas
               ref={dpCanvasRef}
               onMouseDown={handleMouseDown}
@@ -496,7 +513,7 @@ export function DPGenerator({
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="w-full aspect-[4/5] cursor-grab active:cursor-grabbing block touch-none"
+              className="w-full max-w-full aspect-[4/5] cursor-grab active:cursor-grabbing block touch-none"
             />
 
             {imageObj && (

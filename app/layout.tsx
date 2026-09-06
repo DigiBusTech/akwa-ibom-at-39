@@ -2,8 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Outfit, Montserrat } from "next/font/google";
 import Link from "next/link";
 import NextTopLoader from "nextjs-toploader";
-import { Camera } from "lucide-react";
-import { AkwaIbomMap } from "@/components/AkwaIbomMap";
+import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import "./globals.css";
 
@@ -98,53 +97,7 @@ export default function RootLayout({
           speed={250}
           shadow="0 0 12px #FF6600,0 0 6px #007A33"
         />
-        <header className="w-full border-b border-orange-500/15 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="p-1 rounded-xl bg-slate-900 border border-orange-500/30 flex items-center justify-center shadow-md shadow-orange-500/10 group-hover:border-orange-500/60 transition">
-                <AkwaIbomMap className="w-8 h-8" size={32} fill="#FF6600" />
-              </div>
-              <div className="flex flex-col">
-                <span className="font-black text-sm tracking-tight text-white group-hover:text-orange-400 transition">
-                  AKWA IBOM @ 39
-                </span>
-                <span className="text-[10px] text-emerald-400 font-semibold tracking-wider">
-                  ARISE &bull; LAND OF PROMISE
-                </span>
-              </div>
-            </Link>
-
-            <nav className="flex items-center gap-2 sm:gap-3 text-xs font-semibold">
-              <Link
-                href="/dp"
-                className="px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/25 transition flex items-center gap-1.5"
-              >
-                <Camera className="w-3.5 h-3.5" />
-                <span>DP Frame</span>
-              </Link>
-              <Link
-                href="/leaderboard"
-                className="px-3 py-1.5 rounded-lg bg-slate-900 text-slate-300 border border-slate-800 hover:text-white hover:border-slate-700 transition flex items-center gap-1.5"
-              >
-                <span>Leaderboard</span>
-              </Link>
-              <Link
-                href="/quiz"
-                className="px-3.5 py-1.5 rounded-lg bg-orange-500/20 text-orange-300 border border-orange-500/40 hover:bg-orange-500/30 transition flex items-center gap-1.5"
-              >
-                <span>Take Trivia</span>
-              </Link>
-              <a
-                href="https://www.sabiaitech.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-lg bg-slate-900 text-slate-300 border border-slate-800 hover:text-white transition text-[11px]"
-              >
-                <span>Sabi AI Tech</span>
-              </a>
-            </nav>
-          </div>
-        </header>
+        <Header />
 
         <div className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-between overflow-x-hidden">
           {children}

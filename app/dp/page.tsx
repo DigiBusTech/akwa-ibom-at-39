@@ -17,9 +17,9 @@ export const metadata: Metadata = {
 
 export default function DPPage() {
   return (
-    <main className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-300">
+    <main className="min-h-screen py-6 sm:py-10 px-4 md:px-8 max-w-5xl mx-auto space-y-6 sm:space-y-8 animate-in fade-in duration-300">
       {/* Top Header / Breadcrumb */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4 sm:pb-6">
         <Link
           href="/"
           className="inline-flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-orange-400 transition"
@@ -31,7 +31,7 @@ export default function DPPage() {
         <div className="flex items-center gap-2">
           <Link
             href="/quiz"
-            className="px-3.5 py-1.5 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 hover:bg-orange-500/20 transition text-xs font-bold flex items-center gap-1.5"
+            className="px-3 py-1.5 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 hover:bg-orange-500/20 transition text-xs font-bold flex items-center gap-1.5"
           >
             <Trophy className="w-3.5 h-3.5" />
             <span>Heritage Quiz &amp; Leaderboard</span>
@@ -40,15 +40,15 @@ export default function DPPage() {
       </div>
 
       {/* Hero Title */}
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold uppercase tracking-wider">
+      <div className="text-center space-y-2.5 sm:space-y-3">
+        <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 py-1 sm:py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] sm:text-xs font-bold uppercase tracking-wider">
           <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Official Statehood Jubilee Commemorative Frame</span>
+          <span>Official Statehood Jubilee Frame</span>
         </div>
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight">
           Wear Your <span className="text-orange-500">State Pride</span> on Sept 23rd
         </h1>
-        <p className="text-sm sm:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
+        <p className="text-xs sm:text-sm md:text-base text-slate-300 max-w-2xl mx-auto leading-relaxed">
           Upload your portrait, customize your name and LGA, and download the official 1080p celebration frame for WhatsApp Status, Instagram, X, and Facebook.
         </p>
       </div>

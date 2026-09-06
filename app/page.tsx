@@ -67,16 +67,15 @@ export default async function Home() {
   ];
 
   return (
-    <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-10">
+    <main className="flex-1 w-full max-w-6xl mx-auto px-4 md:px-8 py-6 sm:py-8 space-y-8 sm:space-y-10">
       {/* Scheduled Confetti & Fireworks Celebration Overlay */}
       <CelebrationOverlay initialSettings={platformSettings} />
 
-
       {/* 1. Main Hero Section: Explaining Platform & Showing Official DP Preview */}
-      <section className="text-center space-y-8 pt-2">
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-300 text-xs sm:text-sm font-semibold backdrop-blur-md">
-            <Sparkles className="w-4 h-4 text-orange-400" />
+      <section className="text-center space-y-6 sm:space-y-8 pt-2">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 sm:gap-3">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-300 text-xs sm:text-sm font-semibold backdrop-blur-md">
+            <Sparkles className="w-4 h-4 text-orange-400 shrink-0" />
             <span>Commemorating 39 Years: 1987 – 2026</span>
             <span className="hidden sm:inline text-orange-400/50">•</span>
             <span className="hidden sm:inline text-orange-400">Land of Promise</span>
@@ -85,7 +84,7 @@ export default async function Home() {
           <LiveHeroCounter initialStats={stats} />
         </div>
 
-        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black tracking-tight leading-tight">
           <span className="block text-white">Akwa Ibom @ 39</span>
           <span className="bg-gradient-to-r from-orange-400 via-amber-300 to-emerald-400 bg-clip-text text-transparent">
             Celebrating 39 Shades of Gratitude
