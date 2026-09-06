@@ -179,6 +179,33 @@ export interface Database {
         };
         Relationships: [];
       };
+      site_traffic: {
+        Row: {
+          id: string;
+          ip_address: string;
+          country_code: string;
+          page_route: string;
+          visited_at: string;
+          session_id: string | null;
+        };
+        Insert: {
+          id?: string;
+          ip_address?: string;
+          country_code?: string;
+          page_route?: string;
+          visited_at?: string;
+          session_id?: string | null;
+        };
+        Update: {
+          id?: string;
+          ip_address?: string;
+          country_code?: string;
+          page_route?: string;
+          visited_at?: string;
+          session_id?: string | null;
+        };
+        Relationships: [];
+      };
 
     };
     Views: {
@@ -213,6 +240,7 @@ export type PublicQuizOption = Database["public"]["Views"]["public_quiz_options"
 export type QuizSubmission = Database["public"]["Tables"]["quiz_submissions"]["Row"];
 export type BirthdayWish = Database["public"]["Tables"]["birthday_wishes"]["Row"];
 export type DailyLetter = Database["public"]["Tables"]["daily_letters"]["Row"];
+export type SiteTraffic = Database["public"]["Tables"]["site_traffic"]["Row"];
 
 
 export interface AnswerSubmissionItem {

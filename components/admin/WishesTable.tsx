@@ -4,6 +4,7 @@ import React, { useState, useTransition } from "react";
 import { Eye, EyeOff, MessageSquare, Check, Sparkles } from "lucide-react";
 import type { BirthdayWish } from "@/types/database";
 import { toggleWishApproval } from "@/app/actions/wishes";
+import { TablePagination } from "./TablePagination";
 
 interface WishesTableProps {
   initialWishes: BirthdayWish[];
@@ -12,6 +13,8 @@ interface WishesTableProps {
 export function WishesTable({ initialWishes }: WishesTableProps) {
   const [wishes, setWishes] = useState<BirthdayWish[]>(initialWishes);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
   const [, startTransition] = useTransition();
 
   const handleToggle = (wish: BirthdayWish) => {
@@ -58,7 +61,7 @@ export function WishesTable({ initialWishes }: WishesTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/60 font-normal">
-            {wishes.map((w) => (
+            {wishes.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((w) => (
               <tr key={w.id} className="hover:bg-slate-900/40 transition">
                 <td className="py-3 px-4 font-semibold text-white whitespace-nowrap">
                   {w.author_name}
@@ -112,9 +115,23 @@ export function WishesTable({ initialWishes }: WishesTableProps) {
                 </td>
               </tr>
             ))}
+            {wishes.length === 0 && (
+              <tr>
+                <td colSpan={6} className="text-center py-8 text-slate-500">
+                  No birthday wishes submitted yet.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
+
+      <TablePagination
+        currentPage={currentPage}
+        totalItems={wishes.length}
+        pageSize={pageSize}
+        onPageChange={setCurrentPage}
+      />
     </div>
   );
 }

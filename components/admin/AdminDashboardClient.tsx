@@ -8,22 +8,28 @@ import {
   Sparkles,
   Lock,
   ArrowRight,
-  ShieldAlert,
   Building,
   TrendingUp,
-  Download,
   RotateCcw,
   BarChart3,
   ScrollText,
+  Radio,
+  Trophy,
+  ShieldAlert,
 } from "lucide-react";
 import type { AdminAnalyticsData } from "@/app/actions/admin";
 import type { DailyLetter } from "@/types/database";
 import { fetchAdminDashboardData } from "@/app/actions/admin";
 import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { LiveTrafficFeed } from "./LiveTrafficFeed";
+import { QuizSubmissionsTable } from "./QuizSubmissionsTable";
+import { ExecutiveExportPanel } from "./ExecutiveExportPanel";
 import { AdminCharts } from "./AdminCharts";
 import { WishesTable } from "./WishesTable";
 import { DailyLettersManager } from "./DailyLettersManager";
 import { AkwaIbomMap } from "../AkwaIbomMap";
+
+type AdminTab = "traffic" | "submissions" | "letters" | "analytics";
 
 interface AdminDashboardClientProps {
   initialData: AdminAnalyticsData;
@@ -35,9 +41,9 @@ export function AdminDashboardClient({ initialData, initialDailyLetters = [] }: 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
   const [authError, setAuthError] = useState("");
-  const [activeTab, setActiveTab] = useState<"analytics" | "letters">("analytics");
+  const [activeTab, setActiveTab] = useState<AdminTab>("traffic");
 
-  // Live Data & Telemetry State - Always declared unconditionally at top level (React Rules of Hooks)
+  // Live Data & Telemetry State
   const [data, setData] = useState<AdminAnalyticsData>(initialData);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date>(new Date());
@@ -65,13 +71,14 @@ export function AdminDashboardClient({ initialData, initialDailyLetters = [] }: 
     if (isSupabaseConfigured()) {
       supabase = createClient();
       channel = supabase
-        .channel("admin:realtime_dashboard")
+        .channel("admin:realtime_command_center")
+        .on("postgres_changes", { event: "*", schema: "public", table: "site_traffic" }, () => refreshLiveStats())
         .on("postgres_changes", { event: "*", schema: "public", table: "quiz_submissions" }, () => refreshLiveStats())
         .on("postgres_changes", { event: "*", schema: "public", table: "birthday_wishes" }, () => refreshLiveStats())
         .subscribe();
     }
 
-    const interval = setInterval(() => refreshLiveStats(), 8000);
+    const interval = setInterval(() => refreshLiveStats(), 10000);
 
     return () => {
       if (supabase && channel) {
@@ -164,74 +171,134 @@ export function AdminDashboardClient({ initialData, initialDailyLetters = [] }: 
 
   return (
     <main className="flex-1 w-full max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 space-y-8">
-      {/* Executive Pitch Header Banner */}
+      {/* Executive Command Center Header Banner */}
       <div className="rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/60 border border-emerald-500/30 p-6 sm:p-8 relative overflow-hidden shadow-2xl">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 relative z-10">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
           <div className="space-y-2 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold">
               <Building className="w-3.5 h-3.5" />
-              <span>Government Pitch & State Impact Analytics Report</span>
+              <span>Executive Telemetry &amp; Real-Time Command Center</span>
             </div>
             <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight">
-              Akwa Ibom @ 39 Engagement Impact
+              Akwa Ibom @ 39 Command Center
             </h1>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Real-time civic engagement telemetry proving cross-border state pride, diaspora connection, 
-              and cultural literacy across all 31 LGAs and global diaspora chapters.
+              Real-time civic telemetry, live visitor tracking, LGA showdown submissions roster, and automated executive reporting.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => refreshLiveStats()}
-              disabled={isSyncing}
-              className="px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-orange-500/50 text-white font-semibold text-xs inline-flex items-center gap-2 transition cursor-pointer disabled:opacity-60"
-            >
-              <RotateCcw className={`w-3.5 h-3.5 text-orange-400 ${isSyncing ? "animate-spin" : ""}`} />
-              <span>{isSyncing ? "Syncing..." : "Refresh Live"}</span>
-            </button>
-            <button
-              onClick={() => window.print()}
-              className="px-4 py-2.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-500 text-white font-semibold text-xs inline-flex items-center gap-2 transition"
-            >
-              <Download className="w-4 h-4 text-orange-400" />
-              <span>Export Deck PDF</span>
-            </button>
-            <div className="p-2.5 rounded-xl bg-slate-950/80 border border-orange-500/30">
-              <AkwaIbomMap className="w-10 h-10" size={40} fill="#FF6600" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            {/* Executive Data Export Engine */}
+            <ExecutiveExportPanel data={data} />
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => refreshLiveStats()}
+                disabled={isSyncing}
+                className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 hover:border-orange-500/50 text-white font-semibold text-xs inline-flex items-center gap-1.5 transition cursor-pointer disabled:opacity-60"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 text-orange-400 ${isSyncing ? "animate-spin" : ""}`} />
+                <span>{isSyncing ? "Syncing..." : "Sync"}</span>
+              </button>
+
+              <div className="p-2 rounded-xl bg-slate-950/80 border border-orange-500/30">
+                <AkwaIbomMap className="w-7 h-7" size={28} fill="#FF6600" />
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Tab Navigation: Telemetry vs Daily Letters */}
-      <div className="p-1.5 rounded-2xl bg-slate-900 border border-slate-800 grid grid-cols-2 gap-2 shadow-xl">
+      {/* Clean 4-Way Tab Interface */}
+      <div className="p-1.5 rounded-2xl bg-slate-900 border border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-2 shadow-xl">
         <button
-          onClick={() => setActiveTab("analytics")}
-          className={`py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer touch-manipulation ${
-            activeTab === "analytics"
+          onClick={() => setActiveTab("traffic")}
+          className={`py-3 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer touch-manipulation ${
+            activeTab === "traffic"
               ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/20"
               : "text-slate-400 hover:text-white hover:bg-slate-800/60"
           }`}
         >
-          <BarChart3 className="w-4 h-4" />
-          <span>Telemetry &amp; Pitch Analytics</span>
+          <Radio className="w-4 h-4 text-emerald-400" />
+          <span>Live Traffic</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/40 text-slate-200">
+            {data.totalVisitors24h}
+          </span>
         </button>
 
         <button
-          onClick={() => setActiveTab("letters")}
-          className={`py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer touch-manipulation ${
-            activeTab === "letters"
+          onClick={() => setActiveTab("submissions")}
+          className={`py-3 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer touch-manipulation ${
+            activeTab === "submissions"
               ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-lg shadow-emerald-600/20"
               : "text-slate-400 hover:text-white hover:bg-slate-800/60"
           }`}
         >
-          <ScrollText className="w-4 h-4" />
-          <span>Daily Countdown Letters ({initialDailyLetters.length})</span>
+          <Trophy className="w-4 h-4 text-amber-300" />
+          <span>Quiz Submissions</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/40 text-slate-200">
+            {data.totalParticipants}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("letters")}
+          className={`py-3 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer touch-manipulation ${
+            activeTab === "letters"
+              ? "bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-lg shadow-cyan-600/20"
+              : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+          }`}
+        >
+          <ScrollText className="w-4 h-4 text-cyan-300" />
+          <span>Daily Letters</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/40 text-slate-200">
+            {initialDailyLetters.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("analytics")}
+          className={`py-3 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer touch-manipulation ${
+            activeTab === "analytics"
+              ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/20"
+              : "text-slate-400 hover:text-white hover:bg-slate-800/60"
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 text-purple-300" />
+          <span>State Analytics</span>
         </button>
       </div>
 
-      {activeTab === "analytics" ? (
+      {/* Tab 1: Live Traffic */}
+      {activeTab === "traffic" && (
+        <div className="animate-in fade-in duration-300">
+          <LiveTrafficFeed
+            totalVisitors24h={data.totalVisitors24h}
+            currentlyOnlineLive={data.currentlyOnlineLive}
+            totalParticipants={data.totalParticipants}
+            traffic={data.recentTraffic}
+            countryBreakdown={data.trafficByCountry}
+          />
+        </div>
+      )}
+
+      {/* Tab 2: Quiz Submissions */}
+      {activeTab === "submissions" && (
+        <div className="animate-in fade-in duration-300">
+          <QuizSubmissionsTable submissions={data.recentSubmissions} />
+        </div>
+      )}
+
+      {/* Tab 3: Daily Letters Manager */}
+      {activeTab === "letters" && (
+        <div className="animate-in fade-in duration-300">
+          <DailyLettersManager initialLetters={initialDailyLetters} />
+        </div>
+      )}
+
+      {/* Tab 4: State Analytics & Wishes Moderation */}
+      {activeTab === "analytics" && (
         <div className="space-y-8 animate-in fade-in duration-300">
           {/* KPI Stat Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -294,10 +361,6 @@ export function AdminDashboardClient({ initialData, initialDailyLetters = [] }: 
 
           {/* Wishes Moderation Table */}
           <WishesTable initialWishes={recentWishes} />
-        </div>
-      ) : (
-        <div className="animate-in fade-in duration-300">
-          <DailyLettersManager initialLetters={initialDailyLetters} />
         </div>
       )}
     </main>

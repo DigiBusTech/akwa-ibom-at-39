@@ -54,11 +54,24 @@ CREATE TABLE IF NOT EXISTS birthday_wishes (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 6. Site Traffic Telemetry Table
+CREATE TABLE IF NOT EXISTS site_traffic (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ip_address VARCHAR(45) NOT NULL DEFAULT '127.0.0.1',
+    country_code VARCHAR(10) NOT NULL DEFAULT 'NG',
+    page_route VARCHAR(255) NOT NULL DEFAULT '/',
+    visited_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    session_id VARCHAR(100)
+);
+
 -- Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_questions_category ON questions(category_id);
 CREATE INDEX IF NOT EXISTS idx_options_question ON options(question_id);
 CREATE INDEX IF NOT EXISTS idx_quiz_submissions_score ON quiz_submissions(score DESC, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_birthday_wishes_approved ON birthday_wishes(is_approved, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_site_traffic_visited_at ON site_traffic(visited_at DESC);
+CREATE INDEX IF NOT EXISTS idx_site_traffic_session ON site_traffic(session_id, page_route);
+CREATE INDEX IF NOT EXISTS idx_site_traffic_country ON site_traffic(country_code);
 
 -- ============================================================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
@@ -68,6 +81,10 @@ ALTER TABLE questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE options ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quiz_submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE birthday_wishes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE site_traffic ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public insert to site_traffic" ON site_traffic FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public select on site_traffic" ON site_traffic FOR SELECT USING (true);
 
 -- Public can read categories & questions
 DROP POLICY IF EXISTS "Public Read Categories" ON categories;
