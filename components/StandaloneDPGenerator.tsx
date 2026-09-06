@@ -42,6 +42,9 @@ export function StandaloneDPGenerator() {
   const [badgeTitle, setBadgeTitle] = useState("Proud Akwa Ibomite");
   const [customBadge, setCustomBadge] = useState("");
   const [imageObj, setImageObj] = useState<HTMLImageElement | null>(null);
+  const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
+  const [cutoutImage, setCutoutImage] = useState<HTMLImageElement | null>(null);
+  const [useCutout, setUseCutout] = useState(true);
   const [zoom, setZoom] = useState(1);
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
@@ -50,6 +53,7 @@ export function StandaloneDPGenerator() {
   const [copied, setCopied] = useState(false);
   const [isRemovingBg, setIsRemovingBg] = useState(false);
   const [bgRemovalProgress, setBgRemovalProgress] = useState("");
+  const cancelBgRemovalRef = useRef(false);
 
   useEffect(() => {
     preloadOfficialFrame().catch(() => {});
@@ -75,50 +79,80 @@ export function StandaloneDPGenerator() {
     redraw();
   }, [redraw]);
 
+  const handleSkipCutout = () => {
+    cancelBgRemovalRef.current = true;
+    setIsRemovingBg(false);
+    setBgRemovalProgress("");
+    if (originalImage) {
+      setImageObj(originalImage);
+      setUseCutout(false);
+    }
+  };
+
+  const toggleCutoutMode = () => {
+    if (!cutoutImage || !originalImage) return;
+    const nextMode = !useCutout;
+    setUseCutout(nextMode);
+    setImageObj(nextMode ? cutoutImage : originalImage);
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    cancelBgRemovalRef.current = false;
     setIsRemovingBg(true);
-    setBgRemovalProgress("Initializing AI background removal engine...");
+    setBgRemovalProgress("Loading photo & optimizing for fast AI...");
+
+    // Immediately load original photo so user never waits with a blank canvas
+    const origUrl = URL.createObjectURL(file);
+    const rawImg = new Image();
+    rawImg.crossOrigin = "anonymous";
+    rawImg.onload = () => {
+      setOriginalImage(rawImg);
+      if (!imageObj) {
+        setImageObj(rawImg);
+        setZoom(1);
+        setPanX(0);
+        setPanY(0);
+      }
+    };
+    rawImg.src = origUrl;
 
     try {
       const blob = await removePhotoBackground(file, (msg) => {
-        setBgRemovalProgress(msg);
+        if (!cancelBgRemovalRef.current) {
+          setBgRemovalProgress(msg);
+        }
       });
 
-      const url = URL.createObjectURL(blob);
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        setImageObj(img);
+      if (cancelBgRemovalRef.current) return;
+
+      const cutoutUrl = URL.createObjectURL(blob);
+      const cutoutImg = new Image();
+      cutoutImg.crossOrigin = "anonymous";
+      cutoutImg.onload = () => {
+        if (cancelBgRemovalRef.current) return;
+        setCutoutImage(cutoutImg);
+        setImageObj(cutoutImg);
+        setUseCutout(true);
         setZoom(1);
         setPanX(0);
         setPanY(0);
         setIsRemovingBg(false);
         setBgRemovalProgress("");
       };
-      img.onerror = () => {
-        throw new Error("Failed to load processed cutout");
-      };
-      img.src = url;
+      cutoutImg.src = cutoutUrl;
     } catch (err) {
-      console.warn("Auto background removal failed, falling back to original photo:", err);
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-          setImageObj(img);
-          setZoom(1);
-          setPanX(0);
-          setPanY(0);
-          setIsRemovingBg(false);
-          setBgRemovalProgress("");
-        };
-        img.src = event.target?.result as string;
-      };
-      reader.readAsDataURL(file);
+      console.warn("Auto background removal skipped or timed out, using original photo:", err);
+      if (!cancelBgRemovalRef.current) {
+        setIsRemovingBg(false);
+        setBgRemovalProgress("");
+        setUseCutout(false);
+        if (rawImg.complete) {
+          setImageObj(rawImg);
+        }
+      }
     }
   };
 
@@ -194,6 +228,13 @@ export function StandaloneDPGenerator() {
               <div className="w-48 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-orange-500 via-amber-400 to-emerald-400 animate-pulse w-full" />
               </div>
+              <button
+                type="button"
+                onClick={handleSkipCutout}
+                className="mt-2 px-4 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-xs font-semibold text-slate-200 border border-slate-700 transition cursor-pointer shadow"
+              >
+                Skip Cutout &amp; Use Photo Directly &rarr;
+              </button>
             </div>
           )}
 
@@ -219,6 +260,27 @@ export function StandaloneDPGenerator() {
             1080 × 1350 HD
           </div>
         </div>
+
+        {/* AI Cutout Mode Toggle */}
+        {cutoutImage && originalImage && (
+          <div className="max-w-sm mx-auto p-3 rounded-2xl bg-slate-950/80 border border-slate-800 flex items-center justify-between text-xs">
+            <span className="text-slate-300 font-medium flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-orange-400" />
+              <span>AI Cutout Mode:</span>
+            </span>
+            <button
+              type="button"
+              onClick={toggleCutoutMode}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                useCutout
+                  ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300"
+                  : "bg-slate-800 border border-slate-700 text-slate-400 hover:text-white"
+              }`}
+            >
+              {useCutout ? "Transparent Cutout (ON)" : "Original Photo (OFF)"}
+            </button>
+          </div>
+        )}
 
         {/* Zoom & Positioning Controls */}
         {imageObj && (

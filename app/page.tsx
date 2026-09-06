@@ -128,7 +128,7 @@ export default async function Home() {
               <Link href="/dp" className="block group/preview">
                 <div className="w-48 sm:w-52 aspect-[4/5] rounded-2xl overflow-hidden border-2 border-orange-500/40 shadow-2xl relative bg-slate-950 group-hover/preview:border-orange-500 transition-all duration-300 group-hover/preview:scale-[1.02]">
                   <img
-                    src="/frames/official-state-frame.png"
+                    src="/frames/official-state-frame-v2.png"
                     alt="Official Akwa Ibom @ 39 Statehood Anniversary DP Template"
                     className="w-full h-full object-cover"
                   />

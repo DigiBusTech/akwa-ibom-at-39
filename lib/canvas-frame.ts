@@ -1,8 +1,8 @@
 /**
  * Official State-Approved Akwa Ibom @ 39 Anniversary DP Frame Canvas Renderer.
  * - Canvas Dimensions: 1080 x 1350 (4:5 Aspect Ratio)
- * - Base Template: /frames/official-state-frame.png
- * - Foreground Layer (Nameplate & Lower Banner): /frames/official-state-frame-foreground.png
+ * - Base Template: /frames/official-state-frame-v2.png
+ * - Foreground Layer (Nameplate & Lower Banner): /frames/official-state-frame-foreground-v2.png
  * - Automatic background-removed portrait sits seamlessly over the central orange patterned motif.
  * - Foreground overlay ensures portrait sits cleanly behind the "I AM" badge and green nameplate.
  */
@@ -55,8 +55,8 @@ export function preloadOfficialFrame(): Promise<[HTMLImageElement, HTMLImageElem
   if (preloadPromise) return preloadPromise;
 
   preloadPromise = Promise.all([
-    loadImage("/frames/official-state-frame.png"),
-    loadImage("/frames/official-state-frame-foreground.png"),
+    loadImage("/frames/official-state-frame-v2.png"),
+    loadImage("/frames/official-state-frame-foreground-v2.png"),
   ]).then(([base, foreground]) => {
     cachedBaseImage = base;
     cachedForegroundImage = foreground;
