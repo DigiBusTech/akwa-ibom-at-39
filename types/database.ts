@@ -182,26 +182,38 @@ export interface Database {
       site_traffic: {
         Row: {
           id: string;
+          device_id: string;
           ip_address: string;
           country_code: string;
           page_route: string;
           visited_at: string;
-          session_id: string | null;
+          first_seen_at?: string;
+          total_visits?: number;
+          route_history?: Array<{ route: string; timestamp: string }> | null;
+          session_id?: string | null;
         };
         Insert: {
           id?: string;
+          device_id: string;
           ip_address?: string;
           country_code?: string;
           page_route?: string;
           visited_at?: string;
+          first_seen_at?: string;
+          total_visits?: number;
+          route_history?: Array<{ route: string; timestamp: string }> | null;
           session_id?: string | null;
         };
         Update: {
           id?: string;
+          device_id?: string;
           ip_address?: string;
           country_code?: string;
           page_route?: string;
           visited_at?: string;
+          first_seen_at?: string;
+          total_visits?: number;
+          route_history?: Array<{ route: string; timestamp: string }> | null;
           session_id?: string | null;
         };
         Relationships: [];

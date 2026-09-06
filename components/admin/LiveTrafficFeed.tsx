@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Users,
   Radio,
@@ -10,9 +10,14 @@ import {
   Activity,
   ArrowUpRight,
   ShieldCheck,
+  Compass,
+  X,
+  History,
+  CheckCircle2,
 } from "lucide-react";
 import type { AdminTrafficEntry } from "@/app/actions/admin";
 import { TablePagination } from "./TablePagination";
+import { VisitorJourneyModal } from "./VisitorJourneyModal";
 
 interface LiveTrafficFeedProps {
   totalVisitors24h: number;
@@ -31,17 +36,49 @@ export function LiveTrafficFeed({
 }: LiveTrafficFeedProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 15;
+  const [selectedVisitor, setSelectedVisitor] = useState<AdminTrafficEntry | null>(null);
+  const pageSize = 12;
+
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setSelectedVisitor(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Sync selected visitor with incoming realtime changes
+  useEffect(() => {
+    if (selectedVisitor) {
+      const updated = traffic.find(
+        (t) => t.device_id === selectedVisitor.device_id || t.id === selectedVisitor.id
+      );
+      if (updated) {
+        setSelectedVisitor(updated);
+      }
+    }
+  }, [traffic]);
 
   const filteredTraffic = traffic.filter((item) => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return true;
-    return (
+    const matchBasic =
       item.ip_address.toLowerCase().includes(q) ||
+      (item.device_id && item.device_id.toLowerCase().includes(q)) ||
       item.country_name.toLowerCase().includes(q) ||
       item.country_code.toLowerCase().includes(q) ||
-      item.page_route.toLowerCase().includes(q)
-    );
+      item.page_route.toLowerCase().includes(q);
+
+    if (matchBasic) return true;
+
+    if (item.route_history && item.route_history.length > 0) {
+      return item.route_history.some((h) => h.route.toLowerCase().includes(q));
+    }
+
+    return false;
   });
 
   const paginatedTraffic = filteredTraffic.slice(
@@ -53,11 +90,11 @@ export function LiveTrafficFeed({
     <div className="space-y-6">
       {/* 1. Top Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Total Visitors (24h) */}
+        {/* Total Unique Devices / Visitors (24h) */}
         <div className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-2 relative overflow-hidden group">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              Total Visitors (24h)
+              Unique Devices (24h)
             </span>
             <div className="p-2 rounded-xl bg-orange-500/10 text-orange-400 border border-orange-500/20">
               <Users className="w-4 h-4" />
@@ -68,7 +105,7 @@ export function LiveTrafficFeed({
           </div>
           <p className="text-[11px] text-slate-400 flex items-center gap-1">
             <Activity className="w-3.5 h-3.5 text-orange-400" />
-            <span>Telemetry logged via Edge Middleware</span>
+            <span>Single device telemetry with route tracking</span>
           </p>
         </div>
 
@@ -88,7 +125,7 @@ export function LiveTrafficFeed({
             {currentlyOnlineLive}
           </div>
           <p className="text-[11px] text-emerald-400/80">
-            Active browser sessions within last 5 minutes
+            Active devices within past 5 minutes
           </p>
         </div>
 
@@ -142,18 +179,26 @@ export function LiveTrafficFeed({
       {/* 3. Real-Time Telemetry Feed Table */}
       <div className="glass-panel p-5 sm:p-6 rounded-2xl border border-slate-800 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
-          <div className="flex items-center gap-2">
-            <Radio className="w-5 h-5 text-emerald-400 animate-pulse" />
-            <h3 className="text-base font-bold text-white tracking-tight">
-              Live Edge Traffic Feed ({filteredTraffic.length})
-            </h3>
+          <div>
+            <div className="flex items-center gap-2">
+              <Radio className="w-5 h-5 text-emerald-400 animate-pulse" />
+              <h3 className="text-base font-bold text-white tracking-tight">
+                Live Visitor Devices ({filteredTraffic.length})
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                1 Device = 1 Row
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Unique device telemetry with live route tracking. Click any visitor to inspect their journey.
+            </p>
           </div>
 
           <div className="relative w-full sm:w-64">
             <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Filter by IP, Country, Route..."
+              placeholder="Search IP, device, route, country..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -168,49 +213,113 @@ export function LiveTrafficFeed({
           <table className="w-full text-left text-xs text-slate-300">
             <thead className="text-[11px] uppercase tracking-wider bg-slate-900/80 text-slate-400 border-b border-slate-800">
               <tr>
-                <th className="py-3 px-4">Origin / Flag</th>
-                <th className="py-3 px-4">IP Address</th>
-                <th className="py-3 px-4">Page Route</th>
-                <th className="py-3 px-4">Session Ref</th>
-                <th className="py-3 px-4 text-right">Visited Time</th>
+                <th className="py-3 px-4">Status &amp; Origin</th>
+                <th className="py-3 px-4">Device &amp; IP Address</th>
+                <th className="py-3 px-4">Current Active Route</th>
+                <th className="py-3 px-4 text-center">Navigations</th>
+                <th className="py-3 px-4 text-right">Last Active</th>
+                <th className="py-3 px-4 text-center">Journey History</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 font-mono">
               {paginatedTraffic.map((item) => (
-                <tr key={item.id} className="hover:bg-slate-900/40 transition">
+                <tr
+                  key={item.id}
+                  onClick={() => setSelectedVisitor(item)}
+                  className="hover:bg-slate-900/60 transition cursor-pointer group"
+                >
+                  {/* Status & Origin */}
                   <td className="py-3 px-4 font-sans whitespace-nowrap">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-xs">
-                      <span>{item.flag}</span>
-                      <span className="font-semibold">{item.country_name}</span>
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="flex h-2.5 w-2.5 relative flex-shrink-0">
+                        {item.is_online ? (
+                          <>
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                          </>
+                        ) : (
+                          <span className="inline-flex rounded-full h-2 w-2 bg-slate-600"></span>
+                        )}
+                      </span>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-200 text-xs">
+                        <span>{item.flag}</span>
+                        <span className="font-semibold">{item.country_name}</span>
+                      </span>
+                    </div>
                   </td>
-                  <td className="py-3 px-4 text-slate-300 font-mono whitespace-nowrap">
-                    {item.ip_address}
+
+                  {/* Device & IP */}
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-white font-mono font-medium">{item.ip_address}</span>
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        {item.device_id.length > 14
+                          ? `${item.device_id.slice(0, 12)}...`
+                          : item.device_id}
+                      </span>
+                    </div>
                   </td>
+
+                  {/* Current Active Route */}
                   <td className="py-3 px-4 font-sans whitespace-nowrap">
                     <span className="px-2.5 py-0.5 rounded-md text-[11px] bg-orange-500/10 text-orange-400 border border-orange-500/30 font-medium inline-flex items-center gap-1">
-                      <ArrowUpRight className="w-3 h-3" />
-                      {item.page_route}
+                      <ArrowUpRight className="w-3 h-3 text-orange-400" />
+                      <span>{item.page_route}</span>
                     </span>
                   </td>
-                  <td className="py-3 px-4 text-slate-500 text-[11px] whitespace-nowrap">
-                    {item.session_id ? item.session_id.slice(0, 8) + "..." : "Anonymous"}
+
+                  {/* Navigations Count */}
+                  <td className="py-3 px-4 text-center whitespace-nowrap font-sans">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-800/80 text-slate-200 border border-slate-700/60">
+                      <Compass className="w-3 h-3 text-emerald-400" />
+                      <span>
+                        {item.total_visits} {item.total_visits === 1 ? "page" : "pages"}
+                      </span>
+                    </span>
                   </td>
+
+                  {/* Last Active Time */}
                   <td className="py-3 px-4 text-right whitespace-nowrap font-sans">
                     <span className="text-slate-200 font-medium flex items-center justify-end gap-1">
                       <Clock className="w-3 h-3 text-slate-400" />
-                      {new Date(item.visited_at).toLocaleTimeString()}
+                      {new Date(item.visited_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}
                     </span>
                     <span className="text-[10px] text-slate-500 font-mono block">
                       {new Date(item.visited_at).toLocaleDateString()}
                     </span>
                   </td>
+
+                  {/* Journey Action Button */}
+                  <td className="py-3 px-4 text-center whitespace-nowrap font-sans">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedVisitor(item);
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 border border-orange-500/20 text-xs font-semibold inline-flex items-center gap-1 transition"
+                    >
+                      <History className="w-3 h-3" />
+                      <span>
+                        Journey (
+                        {item.route_history && item.route_history.length > 0
+                          ? item.route_history.length
+                          : 1}
+                        )
+                      </span>
+                    </button>
+                  </td>
                 </tr>
               ))}
+
               {paginatedTraffic.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="text-center py-10 text-slate-500 font-sans">
-                    No traffic activity matches current filter.
+                  <td colSpan={6} className="text-center py-10 text-slate-500 font-sans">
+                    No active visitor devices match the current filter.
                   </td>
                 </tr>
               )}
@@ -225,6 +334,14 @@ export function LiveTrafficFeed({
           onPageChange={setCurrentPage}
         />
       </div>
+
+      {/* 4. Visitor Journey History Modal */}
+      {selectedVisitor && (
+        <VisitorJourneyModal
+          visitor={selectedVisitor}
+          onClose={() => setSelectedVisitor(null)}
+        />
+      )}
     </div>
   );
 }

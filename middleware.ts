@@ -59,58 +59,101 @@ export async function middleware(request: NextRequest) {
       "NG"
     ).toUpperCase();
 
-    // Session Management & Throttling
-    let sessionId = request.cookies.get("ak39_sid")?.value;
-    const isNewSession = !sessionId;
+    // 1. Device Identifier Cookie (Persistent for 1 Year across all sessions)
+    let deviceId =
+      request.cookies.get("ak39_did")?.value ||
+      request.cookies.get("ak39_sid")?.value;
+    const isNewDevice = !deviceId;
 
-    if (!sessionId) {
-      sessionId = crypto.randomUUID();
-      response.cookies.set("ak39_sid", sessionId, {
+    if (!deviceId) {
+      deviceId = `dev_${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}`;
+      response.cookies.set("ak39_did", deviceId, {
         path: "/",
-        maxAge: 60 * 60 * 24, // 24 hours
+        maxAge: 60 * 60 * 24 * 365, // 1 full year persistence
+        sameSite: "lax",
+        httpOnly: true,
+      });
+      // Maintain legacy session ref for backward-compat
+      response.cookies.set("ak39_sid", deviceId, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 365,
         sameSite: "lax",
         httpOnly: true,
       });
     }
 
-    // Check throttle cookie: throttle per session/route for 15 minutes to save database writes
-    const throttleKey = `ak39_tr_${pathname.replace(/[^a-zA-Z0-9]/g, "_")}`;
-    const isThrottled = Boolean(request.cookies.get(throttleKey)?.value);
+    // 2. Client-side Navigation Debouncing (Edge Cookie Based)
+    // Prevents database exhaustion from rapid reloads or spamming (50k+ visitors/min safe)
+    const lastRoute = request.cookies.get("ak39_lr")?.value;
+    const lastTimeStr = request.cookies.get("ak39_lt")?.value;
+    const nowMs = Date.now();
+    const lastTime = lastTimeStr ? parseInt(lastTimeStr, 10) : 0;
+    const isSameRoute = lastRoute === pathname;
+    const elapsedSec = (nowMs - lastTime) / 1000;
 
-    if (!isThrottled || isNewSession) {
-      // Set throttle cookie for 15 minutes
-      response.cookies.set(throttleKey, "1", {
+    // Throttle if same route refreshed within 15 seconds, or any navigation within 1.5 seconds
+    const shouldThrottle = !isNewDevice && (isSameRoute ? elapsedSec < 15 : elapsedSec < 1.5);
+
+    if (!shouldThrottle) {
+      response.cookies.set("ak39_lr", pathname, {
         path: "/",
-        maxAge: 60 * 15, // 15 minutes
+        maxAge: 60 * 60 * 24, // 24 hours
+        sameSite: "lax",
+      });
+      response.cookies.set("ak39_lt", String(nowMs), {
+        path: "/",
+        maxAge: 60 * 60 * 24,
         sameSite: "lax",
       });
 
-      // Silently log to Supabase in background
+      // Silently record to Supabase in background (Non-blocking)
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
       const supabaseKey =
         process.env.SUPABASE_SERVICE_ROLE_KEY ||
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
       if (supabaseUrl && supabaseKey) {
-        // Non-blocking fetch to Supabase REST
-        fetch(`${supabaseUrl}/rest/v1/site_traffic`, {
+        // High performance atomic RPC procedure to update route & append to journey history
+        fetch(`${supabaseUrl}/rest/v1/rpc/record_traffic_visit`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             apikey: supabaseKey,
             Authorization: `Bearer ${supabaseKey}`,
-            Prefer: "return=minimal",
           },
           body: JSON.stringify({
-            ip_address: ip,
-            country_code: countryCode,
-            page_route: pathname,
-            session_id: sessionId,
+            p_device_id: deviceId,
+            p_ip_address: ip,
+            p_country_code: countryCode,
+            p_page_route: pathname,
           }),
-        }).catch((err) => {
-          // Silent catch to prevent any user interruption
-          console.warn("Telemetry log failed:", err?.message || err);
-        });
+        })
+          .then(async (res) => {
+            // Fallback direct upsert if RPC has not yet been executed in target database
+            if (!res.ok) {
+              await fetch(`${supabaseUrl}/rest/v1/site_traffic?on_conflict=device_id`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  apikey: supabaseKey,
+                  Authorization: `Bearer ${supabaseKey}`,
+                  Prefer: "resolution=merge-duplicates",
+                },
+                body: JSON.stringify({
+                  device_id: deviceId,
+                  ip_address: ip,
+                  country_code: countryCode,
+                  page_route: pathname,
+                  visited_at: new Date().toISOString(),
+                  session_id: deviceId,
+                }),
+              });
+            }
+          })
+          .catch((err) => {
+            // Silent catch to prevent any user interruption
+            console.warn("Telemetry log failed:", err?.message || err);
+          });
       }
     }
   }

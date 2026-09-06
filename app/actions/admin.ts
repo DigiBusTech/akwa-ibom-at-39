@@ -15,14 +15,24 @@ export interface AdminQuizSubmission {
   created_at: string;
 }
 
+export interface RouteHistoryItem {
+  route: string;
+  timestamp: string;
+}
+
 export interface AdminTrafficEntry {
   id: string;
+  device_id: string;
   ip_address: string;
   country_code: string;
   country_name: string;
   flag: string;
   page_route: string;
   visited_at: string;
+  first_seen_at: string;
+  total_visits: number;
+  route_history: RouteHistoryItem[];
+  is_online: boolean;
   session_id: string | null;
 }
 
@@ -142,38 +152,72 @@ export async function fetchAdminDashboardData(): Promise<AdminAnalyticsData> {
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
     const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000).toISOString();
 
-    // Query 24h count
+    // Query 24h count (unique devices active in past 24h)
     const { count: count24h } = await supabase
       .from("site_traffic")
       .select("id", { count: "exact", head: true })
       .gte("visited_at", twentyFourHoursAgo);
 
-    // Query 5m live active count (distinct sessions)
-    const { data: liveData } = await supabase
+    // Query 5m live active count (unique devices active in past 5m)
+    const { count: countLive } = await supabase
       .from("site_traffic")
-      .select("session_id")
+      .select("id", { count: "exact", head: true })
       .gte("visited_at", fiveMinutesAgo);
 
-    const liveSessions = new Set((liveData || []).map((d) => d.session_id).filter(Boolean));
-    const liveOnlineCount = Math.max(liveSessions.size, liveData?.length ? 1 : 0);
-
-    // Query recent 100 traffic visits
+    // Query recent 100 unique traffic devices
     const { data: trafficRows } = await supabase
       .from("site_traffic")
-      .select("id, ip_address, country_code, page_route, visited_at, session_id")
+      .select("id, device_id, ip_address, country_code, page_route, visited_at, first_seen_at, total_visits, route_history, session_id")
       .order("visited_at", { ascending: false })
       .limit(100);
 
-    const recentTraffic: AdminTrafficEntry[] = (trafficRows || []).map((row) => ({
-      id: row.id,
-      ip_address: row.ip_address || "127.0.0.1",
-      country_code: row.country_code || "NG",
-      country_name: getCountryDisplayName(row.country_code),
-      flag: getCountryFlag(row.country_code),
-      page_route: row.page_route || "/",
-      visited_at: row.visited_at || new Date().toISOString(),
-      session_id: row.session_id,
-    }));
+    const recentTraffic: AdminTrafficEntry[] = (trafficRows || []).map((row) => {
+      const visitedAtMs = new Date(row.visited_at || 0).getTime();
+      const isOnline = now.getTime() - visitedAtMs <= 5 * 60 * 1000;
+
+      let parsedHistory: RouteHistoryItem[] = [];
+      if (Array.isArray(row.route_history)) {
+        parsedHistory = row.route_history as RouteHistoryItem[];
+      } else if (typeof row.route_history === "string") {
+        try {
+          parsedHistory = JSON.parse(row.route_history);
+        } catch {
+          parsedHistory = [];
+        }
+      }
+
+      if (parsedHistory.length === 0 && row.page_route) {
+        parsedHistory = [
+          {
+            route: row.page_route,
+            timestamp: row.visited_at || new Date().toISOString(),
+          },
+        ];
+      }
+
+      const devId =
+        row.device_id ||
+        row.session_id ||
+        `dev_${row.id ? row.id.slice(0, 8) : "anon"}`;
+
+      return {
+        id: row.id,
+        device_id: devId,
+        ip_address: row.ip_address || "127.0.0.1",
+        country_code: row.country_code || "NG",
+        country_name: getCountryDisplayName(row.country_code),
+        flag: getCountryFlag(row.country_code),
+        page_route: row.page_route || "/",
+        visited_at: row.visited_at || new Date().toISOString(),
+        first_seen_at: row.first_seen_at || row.visited_at || new Date().toISOString(),
+        total_visits: row.total_visits || parsedHistory.length || 1,
+        route_history: parsedHistory,
+        is_online: isOnline,
+        session_id: row.session_id || devId,
+      };
+    });
+
+    const liveOnlineCount = countLive ?? recentTraffic.filter((t) => t.is_online).length;
 
     // Aggregate Country Distribution from recent traffic
     const countryMap = new Map<string, number>();
