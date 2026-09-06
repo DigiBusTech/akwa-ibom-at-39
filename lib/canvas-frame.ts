@@ -244,25 +244,8 @@ export function renderAnniversaryFrame(options: FrameRenderOptions) {
       ctx.drawImage(fgImg, 0, 0, W, H);
     }
 
-    // 4. Dynamic Text on Orange Badge & Green Nameplate
+    // 4. Dynamic Text on Green Nameplate
     const cleanName = (userName || "PROUD CITIZEN").trim().toUpperCase();
-
-    // 4a. Draw "I AM" Prefix with Official Drop Shadow
-    ctx.save();
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.font = "900 23px 'Montserrat Bold', 'Montserrat', 'Georgia', system-ui, sans-serif";
-    ctx.fillStyle = "#FFFFFF";
-    ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
-    ctx.shadowBlur = 6;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
-    ctx.fillText("I AM", 403, 703);
-    ctx.shadowColor = "transparent";
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-    ctx.restore();
 
     // Determine subtitle line
     let subtitleText = "";
